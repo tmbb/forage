@@ -1,0 +1,2 @@
+defmodule ForageTest do
+end
