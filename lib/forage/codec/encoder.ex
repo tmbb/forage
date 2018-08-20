@@ -64,13 +64,13 @@ defmodule Forage.Codec.Encoder do
     encoded_page_nr =
       case Keyword.fetch(pagination, :page) do
         :error -> %{}
-        {:ok, value} -> %{"page" => value}
+        {:ok, value} -> %{"page" => Integer.to_string(value)}
       end
 
     encoded_page_size =
       case Keyword.fetch(pagination, :page_size) do
         :error -> %{}
-        {:ok, value} -> %{"page_size" => value}
+        {:ok, value} -> %{"page_size" => Integer.to_string(value)}
       end
 
     case Map.merge(encoded_page_nr, encoded_page_size) do

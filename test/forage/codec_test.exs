@@ -10,6 +10,7 @@ defmodule Forage.CodecTest do
   # Exceptions
   alias Forage.Codec.Exceptions.InvalidFieldError
   alias Forage.Codec.Exceptions.InvalidSortDirectionError
+  alias Forage.Codec.Exceptions.InvalidPaginationDataError
   # Testing hepers
   alias TestSchemas.DummySchema
   doctest Forage.Codec.Encoder
@@ -123,10 +124,18 @@ defmodule Forage.CodecTest do
   describe "pagination" do
     test "pagination data" do
       encoded = %{"_pagination" => %{"page" => "1", "page_size" => "10"}}
-      decoded = ForagePlan.new(pagination: [page: "1", page_size: "10"])
+      decoded = ForagePlan.new(pagination: [page: 1, page_size: 10])
 
       assert Decoder.decode(DummySchema, encoded) == decoded
       assert Encoder.encode(decoded) == encoded
+    end
+
+    test "invalid pagination data" do
+      encoded = %{"_pagination" => %{"page" => "1b", "page_size" => "10"}}
+
+      assert_raise InvalidPaginationDataError, fn ->
+        Decoder.decode(DummySchema, encoded)
+      end
     end
   end
 

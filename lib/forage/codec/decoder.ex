@@ -5,6 +5,7 @@ defmodule Forage.Codec.Decoder do
   """
   alias Forage.Codec.Exceptions.InvalidFieldError
   alias Forage.Codec.Exceptions.InvalidSortDirectionError
+  alias Forage.Codec.Exceptions.InvalidPaginationDataError
   alias Forage.ForagePlan
 
   @doc """
@@ -60,13 +61,15 @@ defmodule Forage.Codec.Decoder do
     page_size_data =
       case pagination["page_size"] do
         nil -> []
-        page_size -> [page_size: page_size]
+        # Will raise if it's not a valid integer
+        page_size -> [page_size: pagination_data_to_integer!(page_size)]
       end
 
     page_nr_data =
       case pagination["page"] do
         nil -> []
-        page -> [page: page]
+        # Will raise if it's not a valid integer
+        page -> [page: pagination_data_to_integer!(page)]
       end
 
       # Already sorted
@@ -82,8 +85,16 @@ defmodule Forage.Codec.Decoder do
   defp decode_direction(nil), do: nil
   defp decode_direction(value), do: raise InvalidSortDirectionError, value
 
+  def pagination_data_to_integer!(value) do
+    try do
+      String.to_integer(value)
+    rescue
+      ArgumentError -> raise InvalidPaginationDataError, value
+    end
+  end
+
   @doc false
-  @spec safe_field_name_to_atom!(atom(), String.t()) :: {:ok, atom()} | :error
+  @spec safe_field_name_to_atom!(atom(), String.t()) :: atom()
   def safe_field_name_to_atom!(schema, field_name) do
     # This function performs the dangerous job of turning a string into an atom.
     # Because the atom table on the BEAM is limited, there is a limit of atoms that can exist.
