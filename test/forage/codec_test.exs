@@ -1,4 +1,8 @@
-defmodule Forage.Codec.RoundtripTest do
+# Instead of testing encoding and decoding separately, we test them together.
+# If `Decoder.decode(a) == b`, then it is always true that `Encoder.encode(b) == a`.
+# We take advantage of this to write (slightly) less boilerplate and always test
+# encoding and decoding at the same time
+defmodule Forage.CodecTest do
   use ExUnit.Case, async: true
   alias Forage.Codec.Encoder
   alias Forage.Codec.Decoder
@@ -10,10 +14,17 @@ defmodule Forage.Codec.RoundtripTest do
   alias TestSchemas.DummySchema
   doctest Forage.Codec.Encoder
 
+  # This module is naturally divided into 5 sections:
+  # - Search (encoding and decoding of search filters)
+  # - Sort (encoding and decoding of sort fields)
+  # - Pagination (encoding and decoding of pagination data)
+  # - Integration ("real-life"-like inputs)
+  # - Invalid Field errors (deals with identifying invalid fields)
+
   describe "search" do
     test "single search filter" do
       encoded =
-        %{"search" => %{
+        %{"_search" => %{
             "string_field" => %{
               "operator" => "contains",
               "value" => "x"}}}
@@ -27,7 +38,7 @@ defmodule Forage.Codec.RoundtripTest do
 
     test "multiple search filters" do
       encoded =
-        %{"search" => %{
+        %{"_search" => %{
             "string_field" => %{
               "operator" => "contains",
               "value" => "x"},
@@ -49,7 +60,7 @@ defmodule Forage.Codec.RoundtripTest do
       # Search filters are converted into keyword lists.
       # Those keyword lists must be ordered so that the decoder is referentially transparent.
       encoded =
-        %{"search" => %{
+        %{"_search" => %{
             "string_field" => %{
               "operator" => "contains",
               "value" => "x"},
@@ -80,10 +91,10 @@ defmodule Forage.Codec.RoundtripTest do
   describe "sort" do
     test "single sort field" do
       # Ascending order
-      encoded_asc = %{"sort" => %{"string_field" => %{"direction" => "asc"}}}
+      encoded_asc = %{"_sort" => %{"string_field" => %{"direction" => "asc"}}}
       decoded_asc = ForagePlan.new(sort: [[field: :string_field, direction: :asc]])
       # Descending order
-      encoded_desc = %{"sort" => %{"string_field" => %{"direction" => "desc"}}}
+      encoded_desc = %{"_sort" => %{"string_field" => %{"direction" => "desc"}}}
       decoded_desc = ForagePlan.new(sort: [[field: :string_field, direction: :desc]])
       # There are no other valid orders!
 
@@ -95,8 +106,8 @@ defmodule Forage.Codec.RoundtripTest do
     end
 
     test "invalid direction raises an error" do
-      encoded_invalid_direction = %{"sort" => %{"string_field" => %{"direction" => "invalid_direction"}}}
-      encoded_invalid_direction_common_misspelling = %{"sort" => %{"string_field" => %{"direction" => "dsc"}}}
+      encoded_invalid_direction = %{"_sort" => %{"string_field" => %{"direction" => "invalid_direction"}}}
+      encoded_invalid_direction_common_misspelling = %{"_sort" => %{"string_field" => %{"direction" => "dsc"}}}
 
       assert_raise InvalidSortDirectionError, fn ->
         Decoder.decode(DummySchema, encoded_invalid_direction)
@@ -108,16 +119,24 @@ defmodule Forage.Codec.RoundtripTest do
     end
   end
 
+  # Still empty
   describe "pagination" do
+    test "pagination data" do
+      encoded = %{"_pagination" => %{"page" => "1", "page_size" => "10"}}
+      decoded = ForagePlan.new(pagination: [page: "1", page_size: "10"])
+
+      assert Decoder.decode(DummySchema, encoded) == decoded
+      assert Encoder.encode(decoded) == encoded
+    end
   end
 
   describe "handling of invalid fields" do
     test "invalid fields in search" do
       encoded =
-        %{"search" => %{
-          "invalid_field" => %{
-            "operator" => "contains",
-            "value" => "x"}}}
+        %{"_search" => %{
+            "invalid_field" => %{
+              "operator" => "contains",
+              "value" => "x"}}}
 
       assert_raise InvalidFieldError, fn ->
         Decoder.decode(DummySchema, encoded)
@@ -126,8 +145,7 @@ defmodule Forage.Codec.RoundtripTest do
 
     test "invalid fields in sort" do
       encoded =
-        %{"sort" => %{
-          "invalid_field" => "desc"}}
+        %{"_sort" => %{"invalid_field" => %{"direction" => "desc"}}}
 
       assert_raise InvalidFieldError, fn ->
         Decoder.decode(DummySchema, encoded)

@@ -38,7 +38,7 @@ defmodule Forage.Codec.Encoder do
           }
         }
       end
-    %{"search" => search_value}
+    %{"_search" => search_value}
   end
 
   @doc """
@@ -54,7 +54,7 @@ defmodule Forage.Codec.Encoder do
         # Return key-value pair
         {field_name, %{"direction" => direction_name}}
       end
-    %{"sort" => sort_value}
+    %{"_sort" => sort_value}
   end
 
   @doc """
@@ -62,9 +62,9 @@ defmodule Forage.Codec.Encoder do
   """
   def encode_pagination(%ForagePlan{pagination: pagination} = _plan) do
     encoded_page_nr =
-      case Keyword.fetch(pagination, :page_nr) do
+      case Keyword.fetch(pagination, :page) do
         :error -> %{}
-        {:ok, value} -> %{"page_nr" => value}
+        {:ok, value} -> %{"page" => value}
       end
 
     encoded_page_size =
@@ -74,11 +74,11 @@ defmodule Forage.Codec.Encoder do
       end
 
     case Map.merge(encoded_page_nr, encoded_page_size) do
-      %{} ->
+      empty when empty == %{} ->
         %{}
 
       not_empty ->
-        %{"pagination" => not_empty}
+        %{"_pagination" => not_empty}
     end
   end
 end

@@ -20,7 +20,7 @@ defmodule Forage.Codec.Decoder do
   @doc """
   Extract and decode the search filters from the `params` map into a keyword list.
   """
-  def decode_search(schema, %{"search" => search}) do
+  def decode_search(schema, %{"_search" => search}) do
     decoded =
       for {field_name, field_params} <- search do
         field_atom = safe_field_name_to_atom!(schema, field_name)
@@ -38,7 +38,7 @@ defmodule Forage.Codec.Decoder do
   @doc """
   Extract and decode the sort fields from the `params` map into a keyword list.
   """
-  def decode_sort(schema, %{"sort" => sort}) do
+  def decode_sort(schema, %{"_sort" => sort}) do
     decoded =
       # TODO: make this more robust
       for {field_name, %{"direction" => direction}} <- sort do
@@ -56,7 +56,7 @@ defmodule Forage.Codec.Decoder do
   @doc """
   Extract and decode the pagination data from the `params` map into a keyword list.
   """
-  def decode_pagination(_schema, %{"pagination" => pagination}) do
+  def decode_pagination(_schema, %{"_pagination" => pagination}) do
     page_size_data =
       case pagination["page_size"] do
         nil -> []
