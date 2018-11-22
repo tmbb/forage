@@ -8,12 +8,14 @@ defmodule Forage.CodecTest do
   alias Forage.Codec.Decoder
   alias Forage.ForagePlan
   # Exceptions
-  alias Forage.Codec.Exceptions.InvalidFieldError
+  # alias Forage.Codec.Exceptions.InvalidAssocError
+  # alias Forage.Codec.Exceptions.InvalidFieldError
   alias Forage.Codec.Exceptions.InvalidSortDirectionError
-  alias Forage.Codec.Exceptions.InvalidPaginationDataError
   # Testing hepers
-  alias TestSchemas.DummySchema
+  alias TestSchemas.PrimarySchema
+  alias TestSchemas.RemoteSchema
   doctest Forage.Codec.Encoder
+  import Ecto.Query
 
   # This module is naturally divided into 5 sections:
   # - Search (encoding and decoding of search filters)
@@ -27,34 +29,85 @@ defmodule Forage.CodecTest do
       encoded =
         %{"_search" => %{
             "string_field" => %{
-              "operator" => "contains",
-              "value" => "x"}}}
+              "op" => "contains",
+              "val" => "x"}}}
 
       decoded =
-        ForagePlan.new(search: [[field: :string_field, operator: "contains", value: "x"]])
+        ForagePlan.new(search: [
+          [field: {:simple, :string_field}, operator: "contains", value: "x"]
+        ])
 
       assert Encoder.encode(decoded) == encoded
-      assert Decoder.decode(DummySchema, encoded) == decoded
+      assert Decoder.decode(encoded, PrimarySchema) == decoded
     end
 
     test "multiple search filters" do
       encoded =
         %{"_search" => %{
             "string_field" => %{
-              "operator" => "contains",
-              "value" => "x"},
+              "op" => "contains",
+              "val" => "x"},
             "integer_field" => %{
-              "operator" => "equal_to",
-              "value" => "2"}}}
+              "op" => "equal_to",
+              "val" => "2"}}}
 
       decoded =
         ForagePlan.new(search: [
-          [field: :integer_field, operator: "equal_to", value: "2"],
-          [field: :string_field, operator: "contains", value: "x"]
+          [field: {:simple, :integer_field}, operator: "equal_to", value: "2"],
+          [field: {:simple, :string_field}, operator: "contains", value: "x"]
         ])
 
       assert Encoder.encode(decoded) == encoded
-      assert Decoder.decode(DummySchema, encoded) == decoded
+      assert Decoder.decode(encoded, PrimarySchema) == decoded
+    end
+
+    test "association" do
+      encoded =
+        %{"_search" => %{
+            "owner.remote_string_field" => %{
+              "op" => "contains",
+              "val" => "x"}}}
+
+        decoded = ForagePlan.new(search: [
+          [
+            field: {:assoc, {RemoteSchema, :owner, :remote_string_field}},
+            operator: "contains",
+            value: "x"
+          ]
+        ])
+
+      assert Decoder.decode(encoded, PrimarySchema) == decoded
+      assert Encoder.encode(decoded) == encoded
+    end
+
+    test "association + simple field" do
+      encoded =
+        %{"_search" => %{
+            "string_field" => %{
+              "op" => "contains",
+              "val" => "x"},
+            "owner.remote_string_field" => %{
+              "op" => "contains",
+              "val" => "x"}}}
+
+        decoded = ForagePlan.new(search: [
+          [
+            field: {:assoc, {RemoteSchema, :owner, :remote_string_field}},
+            operator: "contains",
+            value: "x"
+          ],
+          [
+            field: {:simple, :string_field},
+            operator: "contains",
+            value: "x"
+          ]
+        ])
+
+      {_plan, query} = Forage.QueryBuilder.build_query(encoded, PrimarySchema)
+      IO.inspect(query)
+
+      assert Decoder.decode(encoded, PrimarySchema) == decoded
+      assert Encoder.encode(decoded) == encoded
     end
 
     test "multiple decoding runs preserve the order of the filters" do
@@ -63,28 +116,28 @@ defmodule Forage.CodecTest do
       encoded =
         %{"_search" => %{
             "string_field" => %{
-              "operator" => "contains",
-              "value" => "x"},
+              "op" => "contains",
+              "val" => "x"},
             "integer_field" => %{
-              "operator" => "equal_to",
-              "value" => "2"}}}
+              "op" => "equal_to",
+              "val" => "2"}}}
 
       decoded =
         ForagePlan.new(search: [
-          [field: :integer_field, operator: "equal_to", value: "2"],
-          [field: :string_field, operator: "contains", value: "x"]
+          [field: {:simple, :integer_field}, operator: "equal_to", value: "2"],
+          [field: {:simple, :string_field}, operator: "contains", value: "x"]
         ])
 
       decoded_wrong_order =
         ForagePlan.new(search: [
-          [field: :string_field, operator: "contains", value: "x"],
-          [field: :integer_field, operator: "equal_to", value: "2"]
+          [field: {:simple, :string_field}, operator: "contains", value: "x"],
+          [field: {:simple, :integer_field}, operator: "equal_to", value: "2"]
         ])
 
       for _ <- 1..100 do
-        assert Decoder.decode(DummySchema, encoded) == decoded
+        assert Decoder.decode(encoded, PrimarySchema) == decoded
         # Completely unnecessary but self-documenting
-        assert Decoder.decode(DummySchema, encoded) != decoded_wrong_order
+        assert Decoder.decode(encoded, PrimarySchema) != decoded_wrong_order
       end
     end
   end
@@ -99,10 +152,10 @@ defmodule Forage.CodecTest do
       decoded_desc = ForagePlan.new(sort: [[field: :string_field, direction: :desc]])
       # There are no other valid orders!
 
-      assert Decoder.decode(DummySchema, encoded_asc) == decoded_asc
+      assert Decoder.decode(encoded_asc, PrimarySchema) == decoded_asc
       assert Encoder.encode(decoded_asc) == encoded_asc
 
-      assert Decoder.decode(DummySchema, encoded_desc) == decoded_desc
+      assert Decoder.decode(encoded_desc, PrimarySchema) == decoded_desc
       assert Encoder.encode(decoded_desc) == encoded_desc
     end
 
@@ -111,54 +164,16 @@ defmodule Forage.CodecTest do
       encoded_invalid_direction_common_misspelling = %{"_sort" => %{"string_field" => %{"direction" => "dsc"}}}
 
       assert_raise InvalidSortDirectionError, fn ->
-        Decoder.decode(DummySchema, encoded_invalid_direction)
+        Decoder.decode(encoded_invalid_direction, PrimarySchema)
       end
 
       assert_raise InvalidSortDirectionError, fn ->
-        Decoder.decode(DummySchema, encoded_invalid_direction_common_misspelling)
+        Decoder.decode(encoded_invalid_direction_common_misspelling, PrimarySchema)
       end
     end
   end
 
   # Still empty
   describe "pagination" do
-    test "pagination data" do
-      encoded = %{"_pagination" => %{"page" => "1", "page_size" => "10"}}
-      decoded = ForagePlan.new(pagination: [page: 1, page_size: 10])
-
-      assert Decoder.decode(DummySchema, encoded) == decoded
-      assert Encoder.encode(decoded) == encoded
-    end
-
-    test "invalid pagination data" do
-      encoded = %{"_pagination" => %{"page" => "1b", "page_size" => "10"}}
-
-      assert_raise InvalidPaginationDataError, fn ->
-        Decoder.decode(DummySchema, encoded)
-      end
-    end
-  end
-
-  describe "handling of invalid fields" do
-    test "invalid fields in search" do
-      encoded =
-        %{"_search" => %{
-            "invalid_field" => %{
-              "operator" => "contains",
-              "value" => "x"}}}
-
-      assert_raise InvalidFieldError, fn ->
-        Decoder.decode(DummySchema, encoded)
-      end
-    end
-
-    test "invalid fields in sort" do
-      encoded =
-        %{"_sort" => %{"invalid_field" => %{"direction" => "desc"}}}
-
-      assert_raise InvalidFieldError, fn ->
-        Decoder.decode(DummySchema, encoded)
-      end
-    end
   end
 end

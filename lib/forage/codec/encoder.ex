@@ -30,11 +30,20 @@ defmodule Forage.Codec.Encoder do
   def encode_search(%ForagePlan{search: search} = _plan) do
     search_value =
       for search_filter <- search, into: %{} do
-        field_name = Atom.to_string(search_filter[:field])
+        field_name =
+          case search_filter[:field] do
+            {:simple, name} when is_atom(name) ->
+              Atom.to_string(name)
+
+            {:assoc, {_schema, local, remote}} when is_atom(local) and is_atom(remote) ->
+              local_string = Atom.to_string(local)
+              remote_string = Atom.to_string(remote)
+              local_string <> "." <> remote_string
+          end
         # Return key-value pair
         {field_name, %{
-          "operator" => search_filter[:operator],
-          "value" => search_filter[:value]
+          "op" => search_filter[:operator],
+          "val" => search_filter[:value]
           }
         }
       end
@@ -61,24 +70,18 @@ defmodule Forage.Codec.Encoder do
   Encode the "pagination" part of a forage plan. Returns a map.
   """
   def encode_pagination(%ForagePlan{pagination: pagination} = _plan) do
-    encoded_page_nr =
-      case Keyword.fetch(pagination, :page) do
+    encoded_after =
+      case Keyword.fetch(pagination, :after) do
         :error -> %{}
-        {:ok, value} -> %{"page" => Integer.to_string(value)}
+        {:ok, value} -> %{"after" => value}
       end
 
-    encoded_page_size =
-      case Keyword.fetch(pagination, :page_size) do
+    encoded_before =
+      case Keyword.fetch(pagination, :before) do
         :error -> %{}
-        {:ok, value} -> %{"page_size" => Integer.to_string(value)}
+        {:ok, value} -> %{"after" => value}
       end
 
-    case Map.merge(encoded_page_nr, encoded_page_size) do
-      empty when empty == %{} ->
-        %{}
-
-      not_empty ->
-        %{"_pagination" => not_empty}
-    end
+    Map.merge(encoded_after, encoded_before)
   end
 end

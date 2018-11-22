@@ -1,59 +1,75 @@
 defmodule Forage.QueryBuilder.SearchFilter do
-  import Ecto.Query, only: [dynamic: 2]
+  @moduledoc false
+  import Forage.QueryBuilder.SearchFilter.AddFilterToQuery
 
-  def filters_to_where_clause(filters) do
-    Enum.reduce filters, true, fn filter, query_so_far ->
-      add_filter_to_query(query_so_far, filter.operator, filter.field, filter.value)
-    end
+  # Define the private function `add_filter_to_query/6`.
+  @spec add_filter_to_query(
+    n :: integer(),
+    i :: integer(),
+    query_so_far :: any(),
+    operator :: String.t(),
+    field :: atom(),
+    value :: any()) :: any()
+  define_filter_adder(:add_filter_to_query, 8)
+
+
+  defp map_of_assoc_to_index(assocs) do
+    assocs
+    |> Enum.map(fn filter -> {:assoc, assoc} = filter[:field]; assoc end)
+    |> Enum.with_index(1)
+    |> Enum.into(%{})
   end
 
-  # Currently `add_filter_to_query()` only supports AND in queries (and not OR)
-
-  # Generic
-  defp add_filter_to_query(fragment, "equal_to", field_atom, value) do
-    dynamic([p], field(p, ^field_atom) == ^value and ^fragment)
+  defp extract_non_empty_assocs(filters) do
+    Enum.filter(filters, fn filter ->
+      match?({:assoc, _assoc}, filter[:field]) and filter[:value] != ""
+    end)
   end
 
-  defp add_filter_to_query(fragment, "not_equal_to", field_atom, value) do
-    dynamic([p], field(p, ^field_atom) != ^value and ^fragment)
+  defp extract_non_empty_simple_filters(filters) do
+    Enum.filter(filters, fn filter ->
+      match?({:simple, _simple}, filter[:field]) and filter[:value] != ""
+    end)
   end
 
-  # Numeric
-  defp add_filter_to_query(fragment, "greater_than_or_equal_to", field_atom, value) do
-    dynamic([p], field(p, ^field_atom) >= ^value and ^fragment)
-  end
+  @doc """
+  Compile a list of filters forage plan into an Ecto query
+  """
+  def joins_and_where_clause(filters) do
+    assocs = extract_non_empty_assocs(filters)
+    simple_filters = extract_non_empty_simple_filters(filters)
+    join_fields = Enum.map(assocs, fn assoc -> assoc[:field] end)
+    nr_of_variables = length(assocs) + 1
+    assoc_to_index = map_of_assoc_to_index(assocs)
 
-  defp add_filter_to_query(fragment, "less_than_or_equal_to", field_atom, value) do
-    dynamic([p], field(p, ^field_atom) <= ^value and ^fragment)
-  end
+    query_without_assocs =
+      Enum.reduce(simple_filters, true, fn filter, query_so_far ->
+        {:simple, field} = filter[:field]
+        add_filter_to_query(
+          nr_of_variables,
+          # fields belong to the zeroth variable
+          0,
+          query_so_far,
+          filter[:operator],
+          field,
+          filter[:value]
+        )
+      end)
 
-  defp add_filter_to_query(fragment, "greater_than", field_atom, value) do
-    dynamic([p], field(p, ^field_atom) > ^value and ^fragment)
-  end
+    query_with_assocs =
+      Enum.reduce(assocs, query_without_assocs, fn filter, query_so_far ->
+        {:assoc, {_schema, _local, remote} = assoc} = filter[:field]
+        variable_index = assoc_to_index[assoc]
+        add_filter_to_query(
+          nr_of_variables,
+          variable_index,
+          query_so_far,
+          filter[:operator],
+          remote,
+          filter[:value]
+        )
+      end)
 
-  defp add_filter_to_query(fragment, "less_than", field_atom, value) do
-    dynamic([p], field(p, ^field_atom) < ^value and ^fragment)
-  end
-
-  # Text
-  defp add_filter_to_query(fragment, "contains", field_atom, value) do
-    text = value <> "%"
-    dynamic([p], ilike(field(p, ^field_atom), ^text) and ^fragment)
-  end
-
-  defp add_filter_to_query(fragment, "starts_with", field_atom, value) do
-    text = value <> "%"
-    dynamic([p], ilike(field(p, ^field_atom), ^text) and ^fragment)
-  end
-
-  defp add_filter_to_query(fragment, "ends_with", field_atom, value) do
-    text = value <> "%"
-    dynamic([p], ilike(field(p, ^field_atom), ^text) and ^fragment)
-  end
-
-  # No operator is given: assume "equal_to"
-  defp add_filter_to_query(fragment, nil, field_atom, value) do
-    text = value
-    dynamic([p], field(p, ^field_atom) == ^text and ^fragment)
+    {join_fields, query_with_assocs}
   end
 end

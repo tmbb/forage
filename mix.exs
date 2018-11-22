@@ -21,7 +21,9 @@ defmodule Forage.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ecto, "~> 2.2.0"}
+      {:ecto, "~> 3.0"},
+      {:phoenix_html, "~> 2.10"},
+      {:paginator, "~> 0.4.0"}
     ]
   end
 end

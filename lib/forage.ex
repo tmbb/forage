@@ -3,16 +3,6 @@ defmodule Forage do
   Documentation for Forage.
   """
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Forage.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
+  defdelegate build_query(params, schema, options), to: Forage.QueryBuilder
+  defdelegate paginate(params, schema, options, repo_opts), to: Forage.Paginator
 end
