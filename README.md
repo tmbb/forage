@@ -1,3 +1,9 @@
+### Warning
+
+This is currently very hackish.
+Code organization is not the best, and APIs might change without notice.
+Don't use in production code until the first version on Hex.pm is out.
+
 # Forage
 
 Dynamic ecto queries for ecto, with adapters for Plug applications.
