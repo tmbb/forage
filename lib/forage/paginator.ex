@@ -19,6 +19,9 @@ defmodule Forage.Paginator do
 
   @doc """
   Build properly paginated Ecto queries from a set of parameters.
+
+  Requires a repo with a `paginate/2` function.
+  The easiest way of having a compliant repo is to `use Paginator, ...` inside your `Repo`.
   """
   def paginate(params, schema, repo, options, repo_opts \\ []) do
     # Get an initial query (before pagination)
@@ -37,7 +40,7 @@ defmodule Forage.Paginator do
           sort_direction: sort_direction
         ]
 
-    # Finally, return query
+    # Finally, run the (paginated) query and return the data.
     repo.paginate(query, pagination_options ++ repo_opts)
   end
 end

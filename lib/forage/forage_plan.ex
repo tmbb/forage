@@ -1,9 +1,10 @@
 defmodule Forage.ForagePlan do
-  defstruct [
-    search: [],
-    sort: [],
-    pagination: []
-  ]
+  @moduledoc """
+  A forage plan, which can be used to run paginated queries on your repo.
+  """
+  defstruct search: [],
+            sort: [],
+            pagination: []
 
   def new(opts) do
     %__MODULE__{
@@ -13,4 +14,3 @@ defmodule Forage.ForagePlan do
     }
   end
 end
-

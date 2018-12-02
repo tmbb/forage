@@ -4,10 +4,13 @@ defmodule ForageWeb.ForageView do
   """
   import Phoenix.HTML, only: [sigil_e: 2]
   import Phoenix.HTML.Link, only: [link: 2]
-  import Phoenix.HTML.Form, only: [input_value: 2, form_for: 4, select: 4]
+  import Phoenix.HTML.Form, only: [input_value: 2, form_for: 4]
   alias Phoenix.HTML.FormData
   alias ForageWeb.Naming
 
+  @doc """
+
+  """
   defmacro __using__(options) do
     routes_module =
       case Keyword.fetch(options, :routes_module) do
@@ -63,17 +66,31 @@ defmodule ForageWeb.ForageView do
     end
   end
 
+  @doc """
+  Widget to select ...
+
+  Required options:
+
+  * `:path` (required) - the URL from which to request the data
+  * `:display` (required) - A function that prints the initial value.
+    This function won't be applied to values requested from the server after
+    the initial render.
+  * `:remote_field` (required) - The remote field on the other side of the association.
+  * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
+     If this is not supplied it will default to `#{field}_id`
+  """
   def forage_select(form, field, opts) do
     # Params
     path = Keyword.fetch!(opts, :path)
     display = Keyword.fetch!(opts, :display)
     remote_field = Keyword.fetch!(opts, :remote_field)
+    foreign_key = Keyword.get(opts, :foreign_key, "#{field}_id")
     # Derived values
     field_value = Map.get(form.data, field)
 
     ~e"""
     <select
-      name="<%= form.name %>[<%= field %>_id]"
+      name="<%= form.name %>[<%= foreign_key %>]"
       class="form-control"
       data-forage-select2-widget="true"
       data-url="<%= path %>"
@@ -83,6 +100,19 @@ defmodule ForageWeb.ForageView do
     """
   end
 
+  @doc """
+  Widget to select ...
+
+  Required options:
+
+  * `:path` (required) - the URL from which to request the data
+  * `:display` (required) - A function that prints the initial value.
+    This function won't be applied to values requested from the server after
+    the initial render.
+  * `:remote_field` (required) - The remote field on the other side of the association.
+  * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
+     If this is not supplied it will default to `#{field}_id`
+  """
   def forage_select_filter(form, field, opts) do
     # Params
     path = Keyword.fetch!(opts, :path)
@@ -105,6 +135,7 @@ defmodule ForageWeb.ForageView do
     """
   end
 
+  # Find a way of internationalizing this
   @text_operators [
     {"Contains", "contains"},
     {"Equal to", "equal_to"},
@@ -144,6 +175,9 @@ defmodule ForageWeb.ForageView do
     |> Map.put("_sort", %{field => %{"direction" => direction}})
   end
 
+  @doc """
+  A link to sort a list of database rows by a certain key.
+  """
   def forage_sort_link(conn, mod, fun, field, content, options \\ []) do
     icon_down = Keyword.get(options, :icon_down, " ↓")
     icon_up = Keyword.get(options, :icon_up, " ↑")
@@ -164,6 +198,10 @@ defmodule ForageWeb.ForageView do
     link(link_content, to: destination)
   end
 
+  @doc """
+  A link to the previous page of search results.
+  Returns the empty string if the previous page doesn't exist.
+  """
   def forage_pagination_link_previous(conn, resource, mod, fun, contents) do
     if resource.metadata.before do
       before_params = Map.put(conn.params, :_pagination, %{before: resource.metadata.before})
@@ -174,6 +212,10 @@ defmodule ForageWeb.ForageView do
     end
   end
 
+  @doc """
+  A link to the next page of search results.
+  Returns the empty string if the next page doesn't exist.
+  """
   def forage_pagination_link_next(conn, resource, mod, fun, contents) do
     if resource.metadata.after do
       after_params = Map.put(conn.params, :_pagination, %{after: resource.metadata.after})
@@ -184,6 +226,13 @@ defmodule ForageWeb.ForageView do
     end
   end
 
+  @doc """
+  An already styled "pagination widget" containing a link to the next page
+  and to the previous page of search results.
+
+  If either the previous page or the next page doesn't exist,
+  the respective link will be empty.
+  """
   def forage_pagination_widget(conn, resource, mod, fun, options) do
     previous_text = Keyword.get(options, :previous, "« Previous")
     next_text = Keyword.get(options, :next, "Next »")
@@ -285,18 +334,77 @@ defmodule ForageWeb.ForageView do
     """
   end
 
+  @doc """
+  A filter that works on text.
+
+  It supports the following operators:
+
+  * Contains
+  * Equal
+  * Starts with
+  * Ends with
+
+  ## Examples
+
+  TODO
+  """
   def forage_text_filter(form, name, opts \\ []) do
     generic_forage_filter("text", form, name, @text_operators, opts)
   end
 
+  @doc """
+  A filter that works on numbers.
+
+  It supports the following operators:
+
+  * Equal to
+  * Greater than
+  * Less than
+  * Greater than or equal to
+  * Less than or equal to
+
+  ## Examples
+
+  TODO
+  """
   def forage_numeric_filter(form, name, opts \\ []) do
     generic_forage_filter("number", form, name, @number_operators, opts)
   end
 
+  @doc """
+  A filter that works on dates.
+
+  It supports the following operators:
+
+  * Equal to
+  * Greater than
+  * Less than
+  * Greater than or equal to
+  * Less than or equal to
+
+  ## Examples
+
+  TODO
+  """
   def forage_date_filter(form, name, opts \\ []) do
     generic_forage_filter("date", form, name, @number_operators, opts)
   end
 
+  @doc """
+  A filter that works on time.
+
+  It supports the following operators:
+
+  * Equal to
+  * Greater than
+  * Less than
+  * Greater than or equal to
+  * Less than or equal to
+
+  ## Examples
+
+  TODO
+  """
   def forage_time_filter(form, name, opts \\ []) do
     generic_forage_filter("time", form, name, @number_operators, opts)
   end

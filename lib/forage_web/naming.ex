@@ -1,6 +1,10 @@
 defmodule ForageWeb.Naming do
   @moduledoc false
 
+  # This is a copy of `Phoenix.Naming` from Phoenix 1.4.0
+  # The source was copied here so that we mantain backward compatibility between Forage versions,
+  # independently of what Phoenix does.
+
   @doc """
   Extracts the resource name from an alias.
 

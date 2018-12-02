@@ -47,9 +47,7 @@ defmodule Forage.QueryBuilder do
     default_sort_direction = Keyword.get(options, :sort_direction, :asc)
     preload = Keyword.get(options, :preload, [])
     # This plan has sort information, even if the `params` don't.
-    forage_plan =
-      maybe_add_sort_fields(raw_forage_plan, default_sort, default_sort_direction)
-      |> IO.inspect(label: "forage_plan")
+    forage_plan = maybe_add_sort_fields(raw_forage_plan, default_sort, default_sort_direction)
 
     # Build parts of the query (the filters and the sorting columns)
     {joins, where_clause} = SearchFilter.joins_and_where_clause(forage_plan.search)
