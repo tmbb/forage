@@ -40,13 +40,15 @@ defmodule Forage.Codec.Encoder do
               remote_string = Atom.to_string(remote)
               local_string <> "." <> remote_string
           end
+
         # Return key-value pair
-        {field_name, %{
-          "op" => search_filter[:operator],
-          "val" => search_filter[:value]
-          }
-        }
+        {field_name,
+         %{
+           "op" => search_filter[:operator],
+           "val" => search_filter[:value]
+         }}
       end
+
     %{"_search" => search_value}
   end
 
@@ -63,6 +65,7 @@ defmodule Forage.Codec.Encoder do
         # Return key-value pair
         {field_name, %{"direction" => direction_name}}
       end
+
     %{"_sort" => sort_value}
   end
 
@@ -79,7 +82,7 @@ defmodule Forage.Codec.Encoder do
     encoded_before =
       case Keyword.fetch(pagination, :before) do
         :error -> %{}
-        {:ok, value} -> %{"after" => value}
+        {:ok, value} -> %{"before" => value}
       end
 
     Map.merge(encoded_after, encoded_before)

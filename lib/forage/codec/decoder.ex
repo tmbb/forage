@@ -39,6 +39,7 @@ defmodule Forage.Codec.Decoder do
 
   def decode_field_or_assoc(field_string, schema) do
     parts = String.split(field_string, ".")
+
     case parts do
       [field_name] ->
         field = safe_field_name_to_atom!(field_name, schema)
@@ -57,8 +58,8 @@ defmodule Forage.Codec.Decoder do
   Extract and decode the sort fields from the `params` map into a keyword list.
   """
   def decode_sort(%{"_sort" => sort}, schema) do
+    # TODO: make this more robust
     decoded =
-      # TODO: make this more robust
       for {field_name, %{"direction" => direction}} <- sort do
         field_atom = safe_field_name_to_atom!(field_name, schema)
         direction = decode_direction(direction)
@@ -92,12 +93,11 @@ defmodule Forage.Codec.Decoder do
 
   def decode_pagination(_params, _schema), do: []
 
-
-  @spec decode_direction(String.t | nil) :: atom() | nil
+  @spec decode_direction(String.t() | nil) :: atom() | nil
   defp decode_direction("asc"), do: :asc
   defp decode_direction("desc"), do: :desc
   defp decode_direction(nil), do: nil
-  defp decode_direction(value), do: raise InvalidSortDirectionError, value
+  defp decode_direction(value), do: raise(InvalidSortDirectionError, value)
 
   def pagination_data_to_integer!(value) do
     try do
@@ -115,12 +115,19 @@ defmodule Forage.Codec.Decoder do
     {remote_schema, local, remote}
   end
 
+  def remote_schema(local_name, local_schema) do
+    local = safe_assoc_name_to_atom!(local_name, local_schema)
+    remote_schema = local_schema.__schema__(:association, local).related
+    remote_schema
+  end
+
   @doc false
   @spec safe_assoc_name_to_atom!(String.t(), schema()) :: atom()
   def safe_assoc_name_to_atom!(assoc_name, schema) do
     # This function performs the dangerous job of turning a string into an atom.
     schema_associations = schema.__schema__(:associations)
     found = Enum.find(schema_associations, fn assoc -> assoc_name == Atom.to_string(assoc) end)
+
     case found do
       nil ->
         raise InvalidAssocError, {schema, assoc_name}
@@ -146,6 +153,7 @@ defmodule Forage.Codec.Decoder do
     # When we find a match, we return the atom.
     schema_fields = schema.__schema__(:fields)
     found = Enum.find(schema_fields, fn field -> field_name == Atom.to_string(field) end)
+
     case found do
       nil ->
         raise InvalidFieldError, {schema, field_name}

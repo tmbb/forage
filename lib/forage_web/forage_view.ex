@@ -2,11 +2,15 @@ defmodule ForageWeb.ForageView do
   @moduledoc """
   Helper functions for veiws that feature forage filters, pagination buttons or sort links.
   """
-  import Phoenix.HTML, only: [sigil_e: 2]
+  import Phoenix.HTML, only: [sigil_e: 2, html_escape: 1]
   import Phoenix.HTML.Link, only: [link: 2]
   import Phoenix.HTML.Form, only: [input_value: 2, form_for: 4]
+  alias Phoenix.HTML.Form
   alias Phoenix.HTML.FormData
+  alias Phoenix.HTML.Tag
   alias ForageWeb.Naming
+  alias Ecto.Association.NotLoaded
+  alias ForageWeb.Display
 
   @doc """
 
@@ -72,21 +76,24 @@ defmodule ForageWeb.ForageView do
   Required options:
 
   * `:path` (required) - the URL from which to request the data
-  * `:display` (required) - A function that prints the initial value.
     This function won't be applied to values requested from the server after
     the initial render.
   * `:remote_field` (required) - The remote field on the other side of the association.
   * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
-     If this is not supplied it will default to `#{field}_id`
+     If this is not supplied it will default to `field_id`
   """
   def forage_select(form, field, opts) do
     # Params
     path = Keyword.fetch!(opts, :path)
-    display = Keyword.fetch!(opts, :display)
     remote_field = Keyword.fetch!(opts, :remote_field)
     foreign_key = Keyword.get(opts, :foreign_key, "#{field}_id")
     # Derived values
     field_value = Map.get(form.data, field)
+    field_id = field_value && Map.get(field_value, :id, nil)
+    field_text = display_relation(field_value)
+
+    IO.inspect(form.data, label: "form.data")
+    IO.inspect(field_value, label: "field_value")
 
     ~e"""
     <select
@@ -95,10 +102,55 @@ defmodule ForageWeb.ForageView do
       data-forage-select2-widget="true"
       data-url="<%= path %>"
       data-field="<%= remote_field %>">
-        <option value="<%= field_value && field_value.id %>"><%= display.(field_value) %></option>
+        <option value="<%= field_id %>"><%= field_text %></option>
     </select>
     """
   end
+
+  defp display_relation(nil), do: ""
+  defp display_relation(%NotLoaded{} = _field), do: ""
+  defp display_relation(%{__struct__: _} = field), do: Display.display(field)
+
+  @doc """
+  Displays a struct
+  """
+  def forage_display(nil), do: ""
+  def forage_display(%NotLoaded{} = _field), do: ""
+  def forage_display(%{__struct__: _} = field), do: Display.display(field)
+
+  # @doc """
+  # Widget to select ...
+
+  # Required options:
+
+  # * `:path` (required) - the URL from which to request the data
+  #   This function won't be applied to values requested from the server after
+  #   the initial render.
+  # * `:remote_field` (required) - The remote field on the other side of the association.
+  # * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
+  #    If this is not supplied it will default to `field_id`
+  # """
+  # def forage_select_many(form, field, opts) do
+  #   # Params
+  #   path = Keyword.fetch!(opts, :path)
+  #   display = Keyword.fetch!(opts, :display)
+  #   remote_field = Keyword.fetch!(opts, :remote_field)
+  #   foreign_key = Keyword.get(opts, :foreign_key, "#{field}_id")
+  #   # Derived values
+  #   field_value = Map.get(form.data, field)
+
+  #   ~e"""
+  #   <select
+  #     multiple="true"
+  #     name="__select_many__<%= form.name %>[<%= foreign_key %>]"
+  #     class="form-control"
+  #     data-forage-select2-widget="true"
+  #     data-url="<%= path %>"
+  #     data-field="<%= remote_field %>">
+  #       <option value="<%= field_value && field_value.id %>"><%= display.(field_value) %></option>
+  #   </select>
+  #   """
+  # end
 
   @doc """
   Widget to select ...
@@ -106,21 +158,19 @@ defmodule ForageWeb.ForageView do
   Required options:
 
   * `:path` (required) - the URL from which to request the data
-  * `:display` (required) - A function that prints the initial value.
     This function won't be applied to values requested from the server after
     the initial render.
   * `:remote_field` (required) - The remote field on the other side of the association.
   * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
-     If this is not supplied it will default to `#{field}_id`
+     If this is not supplied it will default to `field_id`
   """
   def forage_select_filter(form, field, opts) do
     # Params
     path = Keyword.fetch!(opts, :path)
-    display = Keyword.fetch!(opts, :display)
     remote_field = Keyword.fetch!(opts, :remote_field)
-    # Derived values
-    IO.inspect({form.data, field})
     field_value = Map.get(form.data, field)
+    field_id = field_value && Map.get(field_value, :id, nil)
+    field_text = display_relation(field_value)
 
     ~e"""
     <select
@@ -129,7 +179,7 @@ defmodule ForageWeb.ForageView do
       data-forage-select2-widget="true"
       data-url="<%= path %>"
       data-field="<%= remote_field %>">
-        <option value="<%= field_value && field_value.id %>"><%= display.(field_value) %></option>
+        <option value="<%= field_id %>"><%= field_text %></option>
     </select>
     <input type="hidden" name="_search[<%= field %>_id][op]" value="equal_to"/>
     """
@@ -386,8 +436,44 @@ defmodule ForageWeb.ForageView do
 
   TODO
   """
-  def forage_date_filter(form, name, opts \\ []) do
-    generic_forage_filter("date", form, name, @number_operators, opts)
+  def forage_date_filter(form, field_spec, opts \\ []) do
+    operators = Keyword.get(opts, :operators, @number_operators)
+    # Extract the field name from the id if necessary
+    {field_values, name} = input_value_and_name(form, field_spec)
+
+    {operator, value} =
+      case field_values do
+        nil ->
+          [{_operator_name, operator_value} | _rest] = operators
+          {operator_value, nil}
+
+        %{"op" => operator, "val" => value} ->
+          {operator, value}
+      end
+
+    {operator_class, value_class} = Keyword.get(opts, :classes, {@operator_class, @value_class})
+
+    opts =
+      opts
+      |> Keyword.put_new(:name, "_search[#{name}][val]")
+      |> Keyword.put_new(:value, value)
+
+    input = forage_date_input(form, name, opts)
+
+    ~e"""
+    <div class="row">
+      <div class="<%= operator_class %>">
+        <select name="_search[<%= name %>][op]" class="form-control">
+          <%= for {op_name, op_value} <- operators do %>
+            <option value="<%= op_value %>"<%= if op_value == operator do %> selected="true"<% end %>><%= op_name %></option>
+          <% end %>
+        </select>
+      </div>
+      <div class="<%= value_class %>">
+        <%= input %>
+      </div>
+    </div>
+    """
   end
 
   @doc """
@@ -408,4 +494,44 @@ defmodule ForageWeb.ForageView do
   def forage_time_filter(form, name, opts \\ []) do
     generic_forage_filter("time", form, name, @number_operators, opts)
   end
+
+  @doc """
+  Datepicker widget based on bootstrap calendar (heavy but gets the work done)
+  """
+  def forage_date_input(form, field, opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:"data-forage-datepicker-widget", "true")
+      |> Keyword.put_new(:class, "form-control")
+
+    icon = Keyword.get(opts, :icon, "fa fa-calendar")
+    input = generic_input(:text, form, field, opts)
+
+    ~e"""
+    <div class="input-group">
+      <%= input %>
+      <%= if icon do %>
+        <span class="input-group-addon"><i class="<%= icon %>"></i></span>
+      <% end %>
+    </div>
+    """
+  end
+
+  # Copied from Phoenix.Form
+  defp generic_input(type, form, field, opts)
+       when is_list(opts) and (is_atom(field) or is_binary(field)) do
+    opts =
+      opts
+      |> Keyword.put_new(:type, type)
+      |> Keyword.put_new(:id, Form.input_id(form, field))
+      |> Keyword.put_new(:name, Form.input_name(form, field))
+      |> Keyword.put_new(:value, Form.input_value(form, field))
+      |> Keyword.update!(:value, &maybe_html_escape/1)
+
+    Tag.tag(:input, opts)
+  end
+
+  # Copied from Phoenix.Form
+  defp maybe_html_escape(nil), do: nil
+  defp maybe_html_escape(value), do: html_escape(value)
 end
