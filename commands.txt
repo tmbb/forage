@@ -1,0 +1,15 @@
+1. `mix phx.new mandarin_office`
+2. Add `:mandarin` to the deps
+3. `mix deps.get`
+4. `mix mandarin.install Admin`
+5. `mix mandarin.gen.html Admin Department department name:string --binary-id`
+6. Add routes to the Router (Using `Mandarin.Router.resources/1`)
+7. `mix mandarin.gen.html Admin Function functions name:string --binary-id`
+8. Add routes to the Router (Using `Mandarin.Router.resources/1`)
+9. `mix mandarin.gen.html Admin Employee employees full_name:string address:string fiscal_number:string employee_number:integer
+epartment:references:departments function:references:functions begin_date:date end_date:date --binary-id`
+10. Add routes to the Router (Using `Mandarin.Router.resources/1`)
+11. Add `:faker` to the deps
+12. Add the contents of `seed.exs` to generate some data
+13. `mix ecto.reset`
+14. `mix phx.server`
