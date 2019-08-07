@@ -92,9 +92,6 @@ defmodule ForageWeb.ForageView do
     field_id = field_value && Map.get(field_value, :id, nil)
     field_text = display_relation(field_value)
 
-    IO.inspect(form.data, label: "form.data")
-    IO.inspect(field_value, label: "field_value")
-
     ~e"""
     <select
       name="<%= form.name %>[<%= foreign_key %>]"
