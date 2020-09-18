@@ -1,6 +1,6 @@
 defmodule ForageWeb.ForageView do
   @moduledoc """
-  Helper functions for veiws that feature forage filters, pagination buttons or sort links.
+  Helper functions for vews that feature forage filters, pagination buttons or sort links.
   """
   import Phoenix.HTML, only: [sigil_e: 2, html_escape: 1]
   import Phoenix.HTML.Link, only: [link: 2]
@@ -13,7 +13,7 @@ defmodule ForageWeb.ForageView do
   alias ForageWeb.Display
 
   @doc """
-
+  TODO
   """
   defmacro __using__(options) do
     routes_module =
@@ -92,9 +92,6 @@ defmodule ForageWeb.ForageView do
     field_id = field_value && Map.get(field_value, :id, nil)
     field_text = display_relation(field_value)
 
-    IO.inspect(form.data, label: "form.data")
-    IO.inspect(field_value, label: "field_value")
-
     ~e"""
     <select
       name="<%= form.name %>[<%= foreign_key %>]"
@@ -118,39 +115,49 @@ defmodule ForageWeb.ForageView do
   def forage_display(%NotLoaded{} = _field), do: ""
   def forage_display(%{__struct__: _} = field), do: Display.display(field)
 
-  # @doc """
-  # Widget to select ...
+  @doc """
+  Widget to select ...
 
-  # Required options:
+  Required options:
 
-  # * `:path` (required) - the URL from which to request the data
-  #   This function won't be applied to values requested from the server after
-  #   the initial render.
-  # * `:remote_field` (required) - The remote field on the other side of the association.
-  # * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
-  #    If this is not supplied it will default to `field_id`
-  # """
-  # def forage_select_many(form, field, opts) do
-  #   # Params
-  #   path = Keyword.fetch!(opts, :path)
-  #   display = Keyword.fetch!(opts, :display)
-  #   remote_field = Keyword.fetch!(opts, :remote_field)
-  #   foreign_key = Keyword.get(opts, :foreign_key, "#{field}_id")
-  #   # Derived values
-  #   field_value = Map.get(form.data, field)
+  * `:path` (required) - the URL from which to request the data
+    This function won't be applied to values requested from the server after
+    the initial render.
+  * `:remote_field` (required) - The remote field on the other side of the association.
+  * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
+     If this is not supplied it will default to `field_id`
+  """
+  def forage_multiple_select(form, field, opts) do
+    # Params
+    path = Keyword.fetch!(opts, :path)
+    remote_field = Keyword.fetch!(opts, :remote_field)
+    # Derived values
+    field_values = Map.get(form.data, field)
 
-  #   ~e"""
-  #   <select
-  #     multiple="true"
-  #     name="__select_many__<%= form.name %>[<%= foreign_key %>]"
-  #     class="form-control"
-  #     data-forage-select2-widget="true"
-  #     data-url="<%= path %>"
-  #     data-field="<%= remote_field %>">
-  #       <option value="<%= field_value && field_value.id %>"><%= display.(field_value) %></option>
-  #   </select>
-  #   """
-  # end
+    results =
+      for entry <- field_values do
+        entry.id
+      end
+
+    IO.inspect(field_values, label: "field values")
+
+    rendered_initial_values = Jason.encode!(results)
+
+    ~e"""
+    <select
+      multiple="true"
+      name="<%= form.name %>[<%= to_string(field) %>][]"
+      class="form-control"
+      data-values="<%= rendered_initial_values %>"
+      data-forage-select2-widget="true"
+      data-url="<%= path %>"
+      data-field="<%= remote_field %>">
+      <%= for field_value <- field_values do %>
+        <option selected="selected" value="<%= field_value && field_value.id %>"><%= display_relation(field_value) %></option>
+      <% end %>
+    </select>
+    """
+  end
 
   @doc """
   Widget to select ...
@@ -256,7 +263,7 @@ defmodule ForageWeb.ForageView do
     if resource.metadata.before do
       before_params = Map.put(conn.params, :_pagination, %{before: resource.metadata.before})
       destination = apply(mod, fun, [conn, :index, before_params])
-      ~e'<li><a href="<%= destination %>"><%= contents %></a></li>'
+      ~e'<li class="page-item"><a class="page-link" href="<%= destination %>"><%= contents %></a></li>'
     else
       ~e''
     end
@@ -270,7 +277,7 @@ defmodule ForageWeb.ForageView do
     if resource.metadata.after do
       after_params = Map.put(conn.params, :_pagination, %{after: resource.metadata.after})
       destination = apply(mod, fun, [conn, :index, after_params])
-      ~e'<li><a href="<%= destination %>"><%= contents %></a></li>'
+      ~e'<li class="page-item"><a class="page-link" href="<%= destination %>"><%= contents %></a></li>'
     else
       ~e''
     end
@@ -286,7 +293,7 @@ defmodule ForageWeb.ForageView do
   def forage_pagination_widget(conn, resource, mod, fun, options) do
     previous_text = Keyword.get(options, :previous, "« Previous")
     next_text = Keyword.get(options, :next, "Next »")
-    classes = Keyword.get(options, :classes, "pagination-sm no-margin pull-right")
+    classes = Keyword.get(options, :classes, "justify-content-center")
 
     ~e"""
     <ul class="pagination <%= classes %>">
@@ -305,8 +312,10 @@ defmodule ForageWeb.ForageView do
     {label_class, inputs_class} = Keyword.get(opts, :classes, {"col-sm-2", "col-sm-10"})
 
     ~e"""
-    <div class="form-group">
-      <label for="<%= input_id %>" class="control-label <%= label_class %>"><%= label %></label>
+    <div class="form-group row">
+      <label for="<%= input_id %>" class="text-right col-form-label <%= label_class %>">
+        <%= label %>
+      </label>
       <div class="<%= inputs_class %>">
         <%= content %>
       </div>
@@ -497,24 +506,16 @@ defmodule ForageWeb.ForageView do
 
   @doc """
   Datepicker widget based on bootstrap calendar (heavy but gets the work done)
+  Actually it might be better to just use the default HTMl datepicker widget.
   """
   def forage_date_input(form, field, opts \\ []) do
     opts =
       opts
+      |> Keyword.delete(:datepicker_opts)
       |> Keyword.put_new(:"data-forage-datepicker-widget", "true")
       |> Keyword.put_new(:class, "form-control")
 
-    icon = Keyword.get(opts, :icon, "fa fa-calendar")
-    input = generic_input(:text, form, field, opts)
-
-    ~e"""
-    <div class="input-group">
-      <%= input %>
-      <%= if icon do %>
-        <span class="input-group-addon"><i class="<%= icon %>"></i></span>
-      <% end %>
-    </div>
-    """
+    generic_input(:date, form, field, opts)
   end
 
   # Copied from Phoenix.Form

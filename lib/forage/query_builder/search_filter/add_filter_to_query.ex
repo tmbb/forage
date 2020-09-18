@@ -45,17 +45,17 @@ defmodule Forage.QueryBuilder.SearchFilter.AddFilterToQuery do
 
       # Text
       defp unquote(filter_adder)(unquote(n), unquote(i), true, "contains", field_atom, value) do
-        text = "%" <> value <> "%"
+        text = "%" <> Forage.QueryBuilder.SearchFilter.AddFilterToQuery.escape_regex(value) <> "%"
         dynamic(unquote(variables_list), ilike(field(unquote(var), ^field_atom), ^text))
       end
 
       defp unquote(filter_adder)(unquote(n), unquote(i), true, "starts_with", field_atom, value) do
-        text = value <> "%"
+        text = Forage.QueryBuilder.SearchFilter.AddFilterToQuery.escape_regex(value) <> "%"
         dynamic(unquote(variables_list), ilike(field(unquote(var), ^field_atom), ^text))
       end
 
       defp unquote(filter_adder)(unquote(n), unquote(i), true, "ends_with", field_atom, value) do
-        text = "%" <> value
+        text = "%" <> Forage.QueryBuilder.SearchFilter.AddFilterToQuery.escape_regex(value)
         dynamic(unquote(variables_list), ilike(field(unquote(var), ^field_atom), ^text))
       end
 
@@ -97,17 +97,17 @@ defmodule Forage.QueryBuilder.SearchFilter.AddFilterToQuery do
 
       # Text
       defp unquote(filter_adder)(unquote(n), unquote(i), fragment, "contains", field_atom, value) do
-        text = "%" <> value <> "%"
+        text = "%" <> Forage.QueryBuilder.SearchFilter.AddFilterToQuery.escape_regex(value) <> "%"
         dynamic(unquote(variables_list), ilike(field(unquote(var), ^field_atom), ^text) and ^fragment)
       end
 
       defp unquote(filter_adder)(unquote(n), unquote(i), fragment, "starts_with", field_atom, value) do
-        text = value <> "%"
+        text = Forage.QueryBuilder.SearchFilter.AddFilterToQuery.escape_regex(value) <> "%"
         dynamic(unquote(variables_list), ilike(field(unquote(var), ^field_atom), ^text) and ^fragment)
       end
 
       defp unquote(filter_adder)(unquote(n), unquote(i), fragment, "ends_with", field_atom, value) do
-        text = "%" <> value
+        text = "%" <> Forage.QueryBuilder.SearchFilter.AddFilterToQuery.escape_regex(value)
         dynamic(unquote(variables_list), ilike(field(unquote(var), ^field_atom), ^text) and ^fragment)
       end
 
@@ -118,6 +118,12 @@ defmodule Forage.QueryBuilder.SearchFilter.AddFilterToQuery do
         dynamic(unquote(variables_list), field(unquote(var), ^field_atom) == ^text and ^fragment)
       end
     end
+  end
+
+  def escape_regex(regex_string) do
+    regex_string
+    |> String.replace("_", "\\_")
+    |> String.replace("%", "\\%")
   end
 
   @doc """

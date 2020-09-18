@@ -7,9 +7,10 @@ defmodule Forage do
 
   defdelegate build_query(params, schema, options), to: Forage.QueryBuilder
   defdelegate paginate(params, schema, options, repo_opts), to: Forage.Paginator
+  defdelegate load_assocs(repo, schema, attrs), to: Forage.AssocLoader
 
   @doc """
-  ABC
+  TODO
   """
   def cast_related(params, schema, repo) do
     for {key, value} <- params, into: %{} do
