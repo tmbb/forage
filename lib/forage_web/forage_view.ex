@@ -5,15 +5,15 @@ defmodule ForageWeb.ForageView do
   import Phoenix.HTML, only: [sigil_e: 2, html_escape: 1]
   import Phoenix.HTML.Link, only: [link: 2]
   import Phoenix.HTML.Form, only: [input_value: 2, form_for: 4]
-  alias Phoenix.HTML.Form
-  alias Phoenix.HTML.FormData
-  alias Phoenix.HTML.Tag
+  alias Phoenix.HTML.{Form, FormData, Tag}
   alias ForageWeb.Naming
   alias Ecto.Association.NotLoaded
-  alias ForageWeb.Display
 
   @doc """
-  TODO
+  Imports functions from `ForageWeb.ForageView` and defines a number of functions
+  specialized for the given resource.
+
+  TODO: complete this.
   """
   defmacro __using__(options) do
     routes_module =
@@ -71,7 +71,12 @@ defmodule ForageWeb.ForageView do
   end
 
   @doc """
-  Widget to select ...
+  Widget to select multiple external resources using the Javascript Select2 widget.
+
+  Parameters:
+  * `form` (`%Phoenix.HTml.Form.t/1`)- the form
+  * `displayer` (module) - a module with a `displayer.as_text/1` function to display the foreign resource.
+  * `field` (atom)
 
   Required options:
 
@@ -82,7 +87,7 @@ defmodule ForageWeb.ForageView do
   * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
      If this is not supplied it will default to `field_id`
   """
-  def forage_select(form, field, opts) do
+  def forage_select(form, displayer, field, opts) do
     # Params
     path = Keyword.fetch!(opts, :path)
     remote_field = Keyword.fetch!(opts, :remote_field)
@@ -90,7 +95,7 @@ defmodule ForageWeb.ForageView do
     # Derived values
     field_value = Map.get(form.data, field)
     field_id = field_value && Map.get(field_value, :id, nil)
-    field_text = display_relation(field_value)
+    field_text = display_relation(displayer, field_value)
 
     ~e"""
     <select
@@ -104,19 +109,17 @@ defmodule ForageWeb.ForageView do
     """
   end
 
-  defp display_relation(nil), do: ""
-  defp display_relation(%NotLoaded{} = _field), do: ""
-  defp display_relation(%{__struct__: _} = field), do: Display.display(field)
+  defp display_relation(_displayer, nil), do: ""
+  defp display_relation(_displayer, %NotLoaded{} = _field), do: ""
+  defp display_relation(displayer, %{__struct__: _} = field), do: displayer.as_text(field)
 
   @doc """
-  Displays a struct
-  """
-  def forage_display(nil), do: ""
-  def forage_display(%NotLoaded{} = _field), do: ""
-  def forage_display(%{__struct__: _} = field), do: Display.display(field)
+  Widget to select multiple external resources using the Javascript Select2 widget.
 
-  @doc """
-  Widget to select ...
+  Parameters:
+  * `form` (`%Phoenix.HTml.Form.t/1`)- the form
+  * `displayer` (module) - a module with a `displayer.as_text/1` function to display the foreign resource.
+  * `field` (atom)
 
   Required options:
 
@@ -127,7 +130,7 @@ defmodule ForageWeb.ForageView do
   * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
      If this is not supplied it will default to `field_id`
   """
-  def forage_multiple_select(form, field, opts) do
+  def forage_multiple_select(form, displayer, field, opts) do
     # Params
     path = Keyword.fetch!(opts, :path)
     remote_field = Keyword.fetch!(opts, :remote_field)
@@ -138,8 +141,6 @@ defmodule ForageWeb.ForageView do
       for entry <- field_values do
         entry.id
       end
-
-    IO.inspect(field_values, label: "field values")
 
     rendered_initial_values = Jason.encode!(results)
 
@@ -153,14 +154,19 @@ defmodule ForageWeb.ForageView do
       data-url="<%= path %>"
       data-field="<%= remote_field %>">
       <%= for field_value <- field_values do %>
-        <option selected="selected" value="<%= field_value && field_value.id %>"><%= display_relation(field_value) %></option>
+        <option selected="selected" value="<%= field_value && field_value.id %>"><%= display_relation(displayer, field_value) %></option>
       <% end %>
     </select>
     """
   end
 
   @doc """
-  Widget to select ...
+  Widget to select an external resource using the Javascript Select2 widget.
+
+  Parameters:
+  * `form` (`%Phoenix.HTml.Form.t/1`)- the form
+  * `displayer` (module) - a module with a `displayer.as_text/1` function to display the foreign resource.
+  * `field` (atom)
 
   Required options:
 
@@ -171,13 +177,13 @@ defmodule ForageWeb.ForageView do
   * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
      If this is not supplied it will default to `field_id`
   """
-  def forage_select_filter(form, field, opts) do
+  def forage_select_filter(form, displayer, field, opts) do
     # Params
     path = Keyword.fetch!(opts, :path)
     remote_field = Keyword.fetch!(opts, :remote_field)
     field_value = Map.get(form.data, field)
     field_id = field_value && Map.get(field_value, :id, nil)
-    field_text = display_relation(field_value)
+    field_text = display_relation(displayer, field_value)
 
     ~e"""
     <select
@@ -289,6 +295,8 @@ defmodule ForageWeb.ForageView do
 
   If either the previous page or the next page doesn't exist,
   the respective link will be empty.
+
+  TODO
   """
   def forage_pagination_widget(conn, resource, mod, fun, options) do
     previous_text = Keyword.get(options, :previous, "« Previous")
@@ -502,6 +510,25 @@ defmodule ForageWeb.ForageView do
   """
   def forage_time_filter(form, name, opts \\ []) do
     generic_forage_filter("time", form, name, @number_operators, opts)
+  end
+
+  @doc """
+  A filter that works on datetime objects.
+
+  It supports the following operators:
+
+  * Equal to
+  * Greater than
+  * Less than
+  * Greater than or equal to
+  * Less than or equal to
+
+  ## Examples
+
+  TODO
+  """
+  def forage_datetime_filter(form, name, opts \\ []) do
+    generic_forage_filter("datetime", form, name, @number_operators, opts)
   end
 
   @doc """

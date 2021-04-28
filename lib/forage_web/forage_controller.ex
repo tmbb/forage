@@ -2,7 +2,6 @@ defmodule ForageWeb.ForageController do
   @moduledoc """
   Helper functions for Plug controllers that use forage.
   """
-  alias ForageWeb.Display
 
   @doc """
   Renders paginated data into a shape that the select widget expects.
@@ -18,10 +17,10 @@ defmodule ForageWeb.ForageController do
 
   TODO
   """
-  def forage_select_data(paginated) do
+  def forage_select_data(displayer, paginated) do
     results =
       for entry <- paginated.entries do
-        %{text: Display.display(entry), id: entry.id}
+        %{text: displayer.as_text(entry), id: entry.id}
       end
 
     %{

@@ -15,7 +15,7 @@ defmodule Forage.CodecTest do
   alias TestSchemas.PrimarySchema
   alias TestSchemas.RemoteSchema
   doctest Forage.Codec.Encoder
-  import Ecto.Query
+  # import Ecto.Query
 
   # This module is naturally divided into 5 sections:
   # - Search (encoding and decoding of search filters)
@@ -103,7 +103,7 @@ defmodule Forage.CodecTest do
           ]
         )
 
-      {_plan, query} = Forage.QueryBuilder.build_query(encoded, PrimarySchema)
+      {_plan, _query} = Forage.QueryBuilder.build_query(encoded, PrimarySchema)
 
       assert Decoder.decode(encoded, PrimarySchema) == decoded
       assert Encoder.encode(decoded) == encoded

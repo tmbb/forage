@@ -1,22 +1,6 @@
 defmodule Forage.Paginator do
   alias Forage.QueryBuilder
 
-  defp get_sort_direction!(forage_plan) do
-    all_asc? = Enum.all?(forage_plan.sort, fn field_data -> field_data[:direction] == :asc end)
-    all_desc? = Enum.all?(forage_plan.sort, fn field_data -> field_data[:direction] == :desc end)
-    # TODO: better exceptions
-    case {all_asc?, all_desc?} do
-      {true, false} -> :asc
-      {false, true} -> :desc
-      {false, false} -> raise ArgumentError, "Sort fields must be all `:asc` or all `:desc`"
-      {true, true} -> raise "This state is impossible unless there are no sort fields!"
-    end
-  end
-
-  defp get_fields(forage_plan) do
-    Enum.map(forage_plan.sort, fn field_data -> field_data[:field] end)
-  end
-
   @doc """
   Build properly paginated Ecto queries from a set of parameters.
 
@@ -43,4 +27,21 @@ defmodule Forage.Paginator do
     # Finally, run the (paginated) query and return the data.
     repo.paginate(query, pagination_options ++ repo_opts)
   end
+
+  defp get_sort_direction!(forage_plan) do
+    all_asc? = Enum.all?(forage_plan.sort, fn field_data -> field_data[:direction] == :asc end)
+    all_desc? = Enum.all?(forage_plan.sort, fn field_data -> field_data[:direction] == :desc end)
+    # TODO: better exceptions
+    case {all_asc?, all_desc?} do
+      {true, false} -> :asc
+      {false, true} -> :desc
+      {false, false} -> raise ArgumentError, "Sort fields must be all `:asc` or all `:desc`"
+      {true, true} -> raise "This state is impossible unless there are no sort fields!"
+    end
+  end
+
+  defp get_fields(forage_plan) do
+    Enum.map(forage_plan.sort, fn field_data -> field_data[:field] end)
+  end
+
 end

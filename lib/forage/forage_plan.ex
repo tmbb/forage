@@ -6,6 +6,9 @@ defmodule Forage.ForagePlan do
             sort: [],
             pagination: []
 
+  @doc """
+  Creates a forage plan.
+  """
   def new(opts) do
     %__MODULE__{
       search: Keyword.get(opts, :search, []),

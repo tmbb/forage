@@ -1,4 +1,11 @@
 defmodule Forage.QueryBuilder.SearchFilter.AddFilterToQuery do
+  @moduledoc false
+
+  # Ecto's compile-time shenanigans make this much harder than it needs to be.
+  # Ideally, it would be trivial to create ecto queries on the fly using
+  # pure functions, but the way ecto is designed, we have to use macros,
+  # which are much less composable.
+
   import Ecto.Query, only: [dynamic: 2]
 
   def filter_adder_clauses(filter_adder, n, i) do
