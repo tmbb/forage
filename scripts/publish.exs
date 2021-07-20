@@ -1,5 +1,5 @@
 defmodule Publisher.Common do
-  defp read_file(path) do
+  def read_file(path) do
     path |> Common.read_file() |> String.replace("\r\n", "\n")
   end
 end
