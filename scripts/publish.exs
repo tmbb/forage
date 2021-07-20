@@ -7,17 +7,17 @@ defmodule Publisher.VersionUtils do
 
   This script doesn't support pre-release versions or versions with build information.
   """
-  @version_line_regex ~r/(\n\s*@version\s+")([^\n]+)("\n)/
+  @version_line_regex ~r/(\n\s*@version\s+")(\d+\.\d+\.\d+)("\n)/
 
-  def bump_major(%Version{} = version) do
+  defp bump_major(%Version{} = version) do
     %{version | major: version.major + 1, minor: 0, patch: 0}
   end
 
-  def bump_minor(%Version{} = version) do
+  defp bump_minor(%Version{} = version) do
     %{version | minor: version.minor + 1, patch: 0}
   end
 
-  def bump_patch(%Version{} = version) do
+  defp bump_patch(%Version{} = version) do
     %{version | patch: version.patch + 1}
   end
 
@@ -26,7 +26,7 @@ defmodule Publisher.VersionUtils do
   end
 
   def get_version() do
-    config = File.read!("mix.exs")
+    config = read_file("mix.exs")
 
     case Regex.run(@version_line_regex, config) do
       [_line, _pre, version, _post] ->
@@ -38,7 +38,7 @@ defmodule Publisher.VersionUtils do
   end
 
   def set_version(version) do
-    contents = File.read!("mix.exs")
+    contents = read_file("mix.exs")
     version_string = version_to_string(version)
 
     replaced =
@@ -47,6 +47,10 @@ defmodule Publisher.VersionUtils do
       end)
 
     File.write!("mix.exs", replaced)
+  end
+
+  defp read_file(path) do
+    path |> File.read!() |> String.replace("\r\n", "\n")
   end
 
   def update_version(%Version{} = version, "major"), do: bump_major(version)
@@ -58,6 +62,16 @@ end
 defmodule Publisher.Changelog do
   @doc """
   Functions to append entries to the changelog.
+
+  The changelog file must be named `CHANGELOG.md` and must contain
+  the following line:
+
+  ```text
+  <!-- %% CHANGELOG_ENTRIES %% -->
+  ```
+
+  The new changelog entries read from the `RELEASE.md` file will be added
+  after this line.
   """
   alias Publisher.VersionUtils
 
@@ -167,7 +181,7 @@ defmodule Publisher do
     Changelog.add_changelog_entry(entry)
     # Set a new version on the mix.exs file
     VersionUtils.set_version(new_version)
-    # Commit the changes and ad a new 'v*.*.*' tag
+    # Commit the changes and add a new 'v*.*.*' tag
     Git.add_commit_and_tag(new_version)
     # Now that we have commited the changes, we can remove the release file
     Changelog.remove_release_file()
