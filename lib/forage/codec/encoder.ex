@@ -13,25 +13,25 @@ defmodule Forage.Codec.Encoder do
   (the params map contains only strings and never atoms)
   """
   def encode(%ForagePlan{} = plan) do
-    # Each of the forage components (search, sort and pagination) will be encoded as maps,
+    # Each of the forage components (filter, sort and pagination) will be encoded as maps,
     # so that they can simply be merged together
-    search_map = encode_search(plan)
+    filter_map = encode_filter(plan)
     sort_map = encode_sort(plan)
     pagination_map = encode_pagination(plan)
     # Merge the three maps
-    search_map |> Map.merge(sort_map) |> Map.merge(pagination_map)
+    filter_map |> Map.merge(sort_map) |> Map.merge(pagination_map)
   end
 
   @doc """
-  Encode the "search" part of a forage plan. Returns a map.
+  Encode the "filter" part of a forage plan. Returns a map.
   """
-  def encode_search(%ForagePlan{search: []} = _plan), do: %{}
+  def encode_filter(%ForagePlan{filter: []} = _plan), do: %{}
 
-  def encode_search(%ForagePlan{search: search} = _plan) do
-    search_value =
-      for search_filter <- search, into: %{} do
+  def encode_filter(%ForagePlan{filter: filter} = _plan) do
+    filter_value =
+      for filter_filter <- filter, into: %{} do
         field_name =
-          case search_filter[:field] do
+          case filter_filter[:field] do
             {:simple, name} when is_atom(name) ->
               Atom.to_string(name)
 
@@ -44,12 +44,12 @@ defmodule Forage.Codec.Encoder do
         # Return key-value pair
         {field_name,
          %{
-           "op" => search_filter[:operator],
-           "val" => search_filter[:value]
+           "op" => filter_filter[:operator],
+           "val" => filter_filter[:value]
          }}
       end
 
-    %{"_search" => search_value}
+    %{"_filter" => filter_value}
   end
 
   @doc """

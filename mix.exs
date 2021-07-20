@@ -11,7 +11,8 @@ defmodule Forage.MixProject do
       start_permanent: Mix.env() == :prod,
       description: description(),
       package: package(),
-      deps: deps()
+      deps: deps(),
+      aliases: aliases()
     ]
   end
 
@@ -28,8 +29,8 @@ defmodule Forage.MixProject do
       {:ecto, "~> 3.0"},
       {:phoenix_html, "~> 2.10"},
       {:json, ">= 0.0.0"},
-      {:paginator, "~> 0.6.0"},
-      {:ex_doc, "~> 0.19", only: :dev}
+      {:paginator, "~> 1.0"},
+      {:ex_doc, "~> 0.23", only: :dev}
     ]
   end
 
@@ -43,6 +44,12 @@ defmodule Forage.MixProject do
       name: "forage",
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/tmbb/forage"}
+    ]
+  end
+
+  defp aliases() do
+    [
+      publish: "run scripts/publish.exs"
     ]
   end
 end

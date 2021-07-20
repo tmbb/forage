@@ -2,7 +2,7 @@ defmodule Forage.QueryBuilder do
   @moduledoc false
   import Ecto.Query, only: [from: 2]
   alias Forage.Codec.Decoder
-  alias Forage.QueryBuilder.SearchFilter
+  alias Forage.QueryBuilder.Filter
   alias Forage.QueryBuilder.SortField
 
   defp sorts_by_id?(forage_plan) do
@@ -50,7 +50,7 @@ defmodule Forage.QueryBuilder do
     forage_plan = maybe_add_sort_fields(raw_forage_plan, default_sort, default_sort_direction)
 
     # Build parts of the query (the filters and the sorting columns)
-    {joins, where_clause} = SearchFilter.joins_and_where_clause(forage_plan.search)
+    {joins, where_clause} = Filter.joins_and_where_clause(forage_plan.filter)
     order_by_clause = SortField.build_order_by_clause(forage_plan.sort)
     # Build the query (except for the pagination)
     query_with_joins = join_assocs(schema, joins)

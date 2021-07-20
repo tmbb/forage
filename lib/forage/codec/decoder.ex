@@ -16,18 +16,22 @@ defmodule Forage.Codec.Decoder do
   Encodes a params map into a forage plan (`Forage.ForagerPlan`).
   """
   def decode(params, schema) do
-    search = decode_search(params, schema)
+    filter = decode_filter(params, schema)
     sort = decode_sort(params, schema)
     pagination = decode_pagination(params, schema)
-    %ForagePlan{search: search, sort: sort, pagination: pagination}
+    %ForagePlan{filter: filter, sort: sort, pagination: pagination}
   end
 
   @doc """
-  Extract and decode the search filters from the `params` map into a list of filters.
+  Extract and decode the filter filters from the `params` map into a list of filters.
+
+  ## Examples:
+
+  TODO
   """
-  def decode_search(%{"_search" => search_data}, schema) do
+  def decode_filter(%{"_filter" => filter_data}, schema) do
     decoded_fields =
-      for {field_string, %{"op" => op, "val" => val}} <- search_data do
+      for {field_string, %{"op" => op, "val" => val}} <- filter_data do
         field_or_assoc = decode_field_or_assoc(field_string, schema)
         [field: field_or_assoc, operator: op, value: val]
       end
@@ -35,7 +39,7 @@ defmodule Forage.Codec.Decoder do
     Enum.sort(decoded_fields)
   end
 
-  def decode_search(_params, _schema), do: []
+  def decode_filter(_params, _schema), do: []
 
   def decode_field_or_assoc(field_string, schema) do
     parts = String.split(field_string, ".")
@@ -56,6 +60,7 @@ defmodule Forage.Codec.Decoder do
 
   @doc """
   Extract and decode the sort fields from the `params` map into a keyword list.
+  To be used with a schema.
   """
   def decode_sort(%{"_sort" => sort}, schema) do
     # TODO: make this more robust
@@ -71,6 +76,25 @@ defmodule Forage.Codec.Decoder do
   end
 
   def decode_sort(_params, _schema), do: []
+
+  @doc """
+  Extract and decode the sort fields from the `params` map into a keyword list.
+  To be used without a schema.
+  """
+  def decode_sort(%{"_sort" => sort}) do
+    # TODO: make this more robust
+    decoded =
+      for {field_name, %{"direction" => direction}} <- sort do
+        field_atom = safe_field_name_to_atom!(field_name)
+        direction = decode_direction(direction)
+        [field: field_atom, direction: direction]
+      end
+
+    # Sort the result so that the order is always the same
+    Enum.sort(decoded)
+  end
+
+  def decode_sort(_params), do: []
 
   @doc """
   Extract and decode the pagination data from the `params` map into a keyword list.
@@ -107,6 +131,7 @@ defmodule Forage.Codec.Decoder do
     end
   end
 
+  @doc false
   @spec safe_field_names_to_assoc!(String.t(), String.t(), atom()) :: assoc()
   def safe_field_names_to_assoc!(local_name, remote_name, local_schema) do
     local = safe_assoc_name_to_atom!(local_name, local_schema)
@@ -115,10 +140,18 @@ defmodule Forage.Codec.Decoder do
     {remote_schema, local, remote}
   end
 
+  @doc false
   def remote_schema(local_name, local_schema) do
     local = safe_assoc_name_to_atom!(local_name, local_schema)
     remote_schema = local_schema.__schema__(:association, local).related
     remote_schema
+  end
+
+  @doc false
+  def remote_schema_and_field_name_as_atom(local_name_as_string, local_schema) do
+    local = safe_assoc_name_to_atom!(local_name_as_string, local_schema)
+    remote_schema = local_schema.__schema__(:association, local).related
+    {remote_schema, local}
   end
 
   @doc false
@@ -138,28 +171,28 @@ defmodule Forage.Codec.Decoder do
   end
 
   @doc false
+  @spec safe_field_name_to_atom!(String.t()) :: atom()
+  def safe_field_name_to_atom!(field_name) do
+    String.to_existing_atom(field_name)
+  end
+
+  @doc false
   @spec safe_field_name_to_atom!(String.t(), schema()) :: atom()
   def safe_field_name_to_atom!(field_name, schema) do
-    # This function performs the dangerous job of turning a string into an atom.
-    # Because the atom table on the BEAM is limited, there is a limit of atoms that can exist.
-    # This means generating atoms at runtime is very dangerous,
-    # especially if they're being generated from user input.
-    # The whole goal of `forage` is to generate process "raw" (i.e. untrusted) user input,
-    # so we must be especially careful.
-    # Using `String.to_atom()` is completely out of the question.
-    # Using `String.to_existing_atom()` is a possibility, but we have chosen to do it in another way.
-    # Instead of turning the string into an atom, we iterate over the schema fields,
-    # convert them into strings and check the strings for equality.
-    # When we find a match, we return the atom.
     schema_fields = schema.__schema__(:fields)
-    found = Enum.find(schema_fields, fn field -> field_name == Atom.to_string(field) end)
 
-    case found do
-      nil ->
+    try do
+      field_name_as_atom = String.to_existing_atom(field_name)
+      case field_name_as_atom in schema_fields do
+        true ->
+          field_name_as_atom
+
+        false ->
+          raise InvalidFieldError, {schema, field_name}
+      end
+    rescue
+      _e in ArgumentError ->
         raise InvalidFieldError, {schema, field_name}
-
-      _ ->
-        found
     end
   end
 end

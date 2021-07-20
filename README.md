@@ -6,7 +6,7 @@ You might think of using this in production, but be warned that this might break
 
 # Forage
 
-Dynamic Ecto queries for ecto, with adapters for Plug applications.
+Dynamic ecto queries for ecto, with adapters for Plug applications.
 It was inspired by Rummage, but with a different API.
 It doesn't share any actual code.
 
@@ -32,7 +32,7 @@ However, the functions in the `Forage` namespace are independent of Plug, and ca
 ### ForageWeb
 
 The `ForageWeb` namespace contains utilities to integrate with Plug applications.
-It contains form input widgets which can be used to build search filters, pagination widgets and sort links.
+It contains form input widgets which can be used to build filters, pagination widgets and sort links.
 These input widgets are built in a way such that when the request is parsed by Plug, the `params` map will be compatible with the query builders in the `Forage` namespace.
 
 Currently this package is used by the [mandarin](https://github.com/tmbb/mandarin). package.

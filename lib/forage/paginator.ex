@@ -28,6 +28,13 @@ defmodule Forage.Paginator do
     {forage_plan, query} = QueryBuilder.build_query(params, schema, options)
     # The cursor fields are the fields used to sort the query
     cursor_fields = get_fields(forage_plan)
+
+    pagination_limit =
+      case Keyword.fetch(options, :limit) do
+        {:ok, limit} -> [{:limit, limit}]
+        :error -> []
+      end
+
     # The sort direction is identified from the Ecto query.
     # It's possible that the ecto query sorts the sort fields in different directions.
     # If that happens, raise an exception with extreme prejudice.
@@ -35,6 +42,7 @@ defmodule Forage.Paginator do
     # Gather all pagination option in one place
     pagination_options =
       forage_plan.pagination ++
+        pagination_limit ++
         [
           cursor_fields: cursor_fields,
           sort_direction: sort_direction
@@ -42,5 +50,39 @@ defmodule Forage.Paginator do
 
     # Finally, run the (paginated) query and return the data.
     repo.paginate(query, pagination_options ++ repo_opts)
+  end
+
+  def pagination_options(params, schema, options \\ []) do
+    {pagination_options, _query} = pagination_options_and_query(params, schema, options)
+    # Return only what matters
+    pagination_options
+  end
+
+  defp pagination_options_and_query(params, schema, options) do
+    # Get an initial query (before pagination)
+    {forage_plan, query} = QueryBuilder.build_query(params, schema, options)
+    # The cursor fields are the fields used to sort the query
+    cursor_fields = get_fields(forage_plan)
+
+    pagination_limit =
+      case Keyword.fetch(options, :limit) do
+        {:ok, limit} -> [{:limit, limit}]
+        :error -> []
+      end
+
+    # The sort direction is identified from the Ecto query.
+    # It's possible that the ecto query sorts the sort fields in different directions.
+    # If that happens, raise an exception with extreme prejudice.
+    sort_direction = get_sort_direction!(forage_plan)
+    # Gather all pagination option in one place
+    pagination_options =
+      forage_plan.pagination ++
+        pagination_limit ++
+        [
+          cursor_fields: cursor_fields,
+          sort_direction: sort_direction
+        ]
+
+    {pagination_options, query}
   end
 end

@@ -14,14 +14,14 @@ defmodule ForageWeb.ForageController do
   but Forage has no way of invoking the application's JSON encoder,
   so we leave that responsibility to the user.
 
-  ## Example:
+  ## Examples:
 
   TODO
   """
   def forage_select_data(paginated) do
     results =
       for entry <- paginated.entries do
-        %{text: Display.display(entry), id: entry.id}
+        %{text: Display.as_text(entry), id: Map.fetch!(entry, :id)}
       end
 
     %{
@@ -31,6 +31,34 @@ defmodule ForageWeb.ForageController do
         after: paginated.metadata.after
       }
     }
+  end
+
+  def forage_select_data(paginated, text_field) do
+    results =
+      for entry <- paginated.entries do
+        %{text: Map.fetch!(entry, text_field), id: Map.fetch!(entry, :id)}
+      end
+
+    %{
+      results: results,
+      pagination: %{
+        more: paginated.metadata.after != nil,
+        after: paginated.metadata.after
+      }
+    }
+  end
+
+  def forage_select_data_without_pagination(entries) do
+    results =
+      for entry <- entries do
+        %{text: Display.as_text(entry), id: entry.id}
+      end
+
+    %{results: results, pagination: %{}}
+  end
+
+  def forage_select_maps(maps) do
+    %{results: maps, pagination: %{}}
   end
 
   @doc """
