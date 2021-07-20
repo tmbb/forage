@@ -1,5 +1,11 @@
+defmodule Publisher.Common do
+  defp read_file(path) do
+    path |> Common.read_file() |> String.replace("\r\n", "\n")
+  end
+end
+
 defmodule Publisher.VersionUtils do
-  @doc """
+  @moduledoc """
   Some utilities to get and set version numbers in the `mix.exs` file
   and to programatically transform version numbers.
 
@@ -7,6 +13,8 @@ defmodule Publisher.VersionUtils do
 
   This script doesn't support pre-release versions or versions with build information.
   """
+  alias Publisher.Common
+
   @version_line_regex ~r/(\n\s*@version\s+")(\d+\.\d+\.\d+)("\n)/
 
   defp bump_major(%Version{} = version) do
@@ -26,7 +34,7 @@ defmodule Publisher.VersionUtils do
   end
 
   def get_version() do
-    config = read_file("mix.exs")
+    config = Common.read_file("mix.exs")
 
     case Regex.run(@version_line_regex, config) do
       [_line, _pre, version, _post] ->
@@ -38,7 +46,7 @@ defmodule Publisher.VersionUtils do
   end
 
   def set_version(version) do
-    contents = read_file("mix.exs")
+    contents = Common.read_file("mix.exs")
     version_string = version_to_string(version)
 
     replaced =
@@ -47,10 +55,6 @@ defmodule Publisher.VersionUtils do
       end)
 
     File.write!("mix.exs", replaced)
-  end
-
-  defp read_file(path) do
-    path |> File.read!() |> String.replace("\r\n", "\n")
   end
 
   def update_version(%Version{} = version, "major"), do: bump_major(version)
@@ -74,6 +78,7 @@ defmodule Publisher.Changelog do
   after this line.
   """
   alias Publisher.VersionUtils
+  alias Publisher.Common
 
   @release_filename "RELEASE.md"
   @release_type_regex ~r/^(RELEASE_TYPE:\s+)(\w+)(.*)/s
@@ -87,7 +92,7 @@ defmodule Publisher.Changelog do
   end
 
   def extract_release_type() do
-    contents = File.read!(@release_filename)
+    contents = Common.read_file(@release_filename)
 
     {type, text} =
       case Regex.run(@release_type_regex, contents) do
@@ -120,7 +125,7 @@ defmodule Publisher.Changelog do
   end
 
   def add_changelog_entry(entry) do
-    contents = File.read!(@changelog_filename)
+    contents = Common.read_file(@changelog_filename)
     [first, last] = String.split(contents, @changelog_entries_marker)
 
     replaced =
