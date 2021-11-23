@@ -1,4 +1,5 @@
 defmodule Forage.AssocLoader do
+  @moduledoc false
   import Ecto.Query, only: [from: 2]
 
   defp string_to_existing_atom(s) do

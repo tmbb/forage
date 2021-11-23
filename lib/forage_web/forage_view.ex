@@ -1,15 +1,91 @@
 defmodule ForageWeb.ForageView do
   @moduledoc """
-  Helper functions for vews that feature forage filters, pagination buttons or sort links.
+  Helper functions for views that feature forage filters, pagination buttons or sort links.
   """
   import Phoenix.HTML, only: [sigil_e: 2]
   import Phoenix.HTML.Link, only: [link: 2]
   import Phoenix.HTML.Form, only: [input_value: 2, form_for: 4]
   require Logger
   alias Phoenix.HTML.{Form, FormData}
-  alias ForageWeb.Naming
   alias ForageWeb.Display
   alias Ecto.Association.NotLoaded
+
+  @type form_data :: Phoenix.HTML.FormData.t()
+  @type safe_html :: Phoenix.HTML.Safe.t()
+  @type form_field :: atom()
+  @type options :: Keyword.t()
+
+  @doc """
+  Specialized version of `ForageWeb.ForageView.forage_form_group/6`
+  that's meant to use the application's error helpers module for internationalization.
+
+  This callback is automatically implemented by `use ForageWeb.ForageView, ...`
+
+  ## Examples
+
+  TODO
+  """
+  @callback forage_form_group(
+    form_data(),
+    form_field(),
+    String.t(),
+    options(),
+    (form_data, form_field(), options() -> safe_html())
+  ) :: safe_html()
+
+  @doc """
+  Specialized version of `ForageWeb.ForageView.forage_horizontal_form_group/6`.
+  that's meant to use the application's error helpers module for internationalization.
+
+  This callback is automatically implemented by `use ForageWeb.ForageView, ...`
+
+  ## Examples
+
+  TODO
+  """
+  @callback forage_horizontal_form_group(
+    form_data(),
+    form_field(),
+    String.t(),
+    options(),
+    (form_data, form_field(), options() -> safe_html())
+  ) :: safe_html()
+
+  @doc """
+  Specialized version of `ForageWeb.ForageView.forage_form_check/6`.
+  that's meant to use the application's error helpers module for internationalization.
+
+  This callback is automatically implemented by `use ForageWeb.ForageView, ...`
+
+  ## Examples
+
+  TODO
+  """
+  @callback forage_form_check(
+    form_data(),
+    form_field(),
+    String.t(),
+    options(),
+    (form_data, form_field(), options() -> safe_html())
+  ) :: safe_html()
+
+  @doc """
+  Specialized version of `ForageWeb.ForageView.forage_inline_form_check/6`.
+  that's meant to use the application's error helpers module for internationalization.
+
+  This callback is automatically implemented by `use ForageWeb.ForageView, ...`
+
+  ## Examples
+
+  TODO
+  """
+  @callback forage_inline_form_check(
+    form_data(),
+    form_field(),
+    String.t(),
+    options(),
+    (form_data, form_field(), options() -> safe_html())
+  ) :: safe_html()
 
   @doc """
   Imports functions from `ForageWeb.ForageView` and defines a number of functions
@@ -113,6 +189,9 @@ defmodule ForageWeb.ForageView do
     forage_form_group_docs =
       internationalization_aware_forage_widgets(error_helpers, :forage_form_group, 5)
 
+    forage_horizontal_form_group_docs =
+        internationalization_aware_forage_widgets(error_helpers, :forage_horizontal_form_group, 5)
+
     forage_form_check_docs =
       internationalization_aware_forage_widgets(error_helpers, :forage_form_check, 5)
 
@@ -121,29 +200,43 @@ defmodule ForageWeb.ForageView do
 
     quote do
       @doc unquote(forage_form_group_docs)
-      def forage_form_group(form_data, field, label, input_fun) do
+      def forage_form_group(form_data, field, label, opts, input_fun) do
         ForageWeb.ForageView.forage_form_group(
           form_data,
           field,
           label,
           unquote(error_helpers),
+          opts,
+          input_fun
+        )
+      end
+
+      @doc unquote(forage_horizontal_form_group_docs)
+      def forage_horizontal_form_group(form_data, field, label, opts, input_fun) when is_list(opts) do
+        ForageWeb.ForageView.forage_horizontal_form_group(
+          form_data,
+          field,
+          label,
+          unquote(error_helpers),
+          opts,
           input_fun
         )
       end
 
       @doc unquote(forage_form_check_docs)
-      def forage_form_check(form_data, field, label, input_fun) do
+      def forage_form_check(form_data, field, label, opts, input_fun) do
         ForageWeb.ForageView.forage_form_check(
           form_data,
           field,
           label,
           unquote(error_helpers),
+          opts,
           input_fun
         )
       end
 
       @doc unquote(forage_inline_form_check_docs)
-      def forage_inline_form_check(form_data, field, label, input_fun) do
+      def forage_inline_form_check(form_data, field, label, opts, input_fun) do
         ForageWeb.ForageView.forage_inline_form_check(
           form_data,
           field,
@@ -166,36 +259,44 @@ defmodule ForageWeb.ForageView do
   def forage_error_tag(form, field, error_helpers) do
     Enum.map(Keyword.get_values(form.errors, field), fn error ->
       ~e"""
-      <div class="invalid-feedback"><%= error_helpers.translate_error(error) %></div>
+      <div class="invalid-feedback">
+        <%= error_helpers.translate_error(error) %>
+      </div>
       """
     end)
   end
 
-  def forage_form_check(form, field, label, error_helpers, input_fun) do
-    forage_generic_form_check(form, field, label, error_helpers, false, input_fun)
+  def forage_horizontal_error_tag(form, field, error_helpers, class) do
+    Enum.map(Keyword.get_values(form.errors, field), fn error ->
+      ~e"""
+      <div class="invalid-feedback <%= class %>">
+        <%= error_helpers.translate_error(error) %>
+      </div>
+      """
+    end)
   end
 
-  def forage_inline_form_check(form, field, label, error_helpers, input_fun) do
-    forage_generic_form_check(form, field, label, error_helpers, true, input_fun)
+  @doc """
+  TODO
+  """
+  def forage_form_check(form, field, label, error_helpers, opts, input_fun) do
+    forage_generic_form_check(form, field, label, error_helpers, opts, false, input_fun)
   end
 
-  defp forage_generic_form_check(form, field, label, error_helpers, inline?, input_fun) do
+  @doc """
+  TODO
+  """
+  def forage_inline_form_check(form, field, label, error_helpers, opts, input_fun) do
+    forage_generic_form_check(form, field, label, error_helpers, opts, true, input_fun)
+  end
+
+  defp forage_generic_form_check(form, field, label, error_helpers, opts, inline?, input_fun) do
     outer_div_class = (inline? && "form-check form-check-inline") || "form-check"
 
     ~e"""
     <div class="<%= outer_div_class %>">
-      <%= input_fun.(form, field) %>
+      <%= input_fun.(form, field, opts) %>
       <%= Form.label form, field, label, class: "form-check-label" %>
-      <%= forage_error_tag(form, field, error_helpers) %>
-    </div>
-    """
-  end
-
-  def forage_form_group(form, field, label, error_helpers, input_fun) do
-    ~e"""
-    <div class="form-group">
-      <%= Form.label form, field, label, class: "control-label" %>
-      <%= input_fun.(form, field) %>
       <%= forage_error_tag(form, field, error_helpers) %>
     </div>
     """
@@ -251,8 +352,8 @@ defmodule ForageWeb.ForageView do
   end
 
   defp forage_generic_input(form, field, input_fun, opts, input_class) do
-    {class, opts} = Keyword.pop(opts, :class, input_class)
-    classes = classes_for_input(form, field, class)
+    {class, opts} = Keyword.pop(opts, :class, "")
+    classes = classes_for_input(form, field, [class, " ", input_class])
     input_fun.(form, field, [{:class, classes} | opts])
   end
 
@@ -284,15 +385,44 @@ defmodule ForageWeb.ForageView do
     _other -> "form-control"
   end
 
+  input_class_for_small = fn
+    input when input in [:radio_button, :checkbox] -> "form-check-input form-check-input-sm"
+    _other -> "form-control form-control-sm"
+  end
+
+  input_class_for_large = fn
+    input when input in [:radio_button, :checkbox] -> "form-check-input form-check-input-lg"
+    _other -> "form-control form-control-lg"
+  end
+
   for name <- phoenix_form_input_names do
     forage_function_name = :"forage_#{name}"
+    forage_function_name_small = :"forage_#{name}_small"
+    forage_function_name_large = :"forage_#{name}_large"
+
     input_class = input_class_for.(name)
+    input_class_small = input_class_for_small.(name)
+    input_class_large = input_class_for_large.(name)
 
     @doc """
     See docs for `Phoenix.HTML.Form.#{name}/3`.
     """
     def unquote(forage_function_name)(form, field, opts \\ []) do
       forage_generic_input(form, field, &Form.unquote(name)/3, opts, unquote(input_class))
+    end
+
+    @doc """
+    See docs for `Phoenix.HTML.Form.#{name}/3`.
+    """
+    def unquote(forage_function_name_small)(form, field, opts \\ []) do
+      forage_generic_input(form, field, &Form.unquote(name)/3, opts, unquote(input_class_small))
+    end
+
+    @doc """
+    See docs for `Phoenix.HTML.Form.#{name}/3`.
+    """
+    def unquote(forage_function_name_large)(form, field, opts \\ []) do
+      forage_generic_input(form, field, &Form.unquote(name)/3, opts, unquote(input_class_large))
     end
   end
 
@@ -301,25 +431,22 @@ defmodule ForageWeb.ForageView do
   Widget to select multiple external resources using the Javascript Select2 widget.
 
   Parameters:
-  * `form` (`%Phoenix.HTml.Form.t/1`)- the form
-  * `displayer` (module) - a module with a `displayer.as_text/1` function to display the foreign resource.
-  * `field` (atom)
 
-  Required options:
+    * `form` (`%Phoenix.Html.Form.t/1`)- the form
+    * `field` (atom)
+    * `path` - the URL from which to request the data
 
-  * `:path` (required) - the URL from which to request the data
-    This function won't be applied to values requested from the server after
-    the initial render.
-  * `:foreign_key` (optional) - The name of the foreign key (as a string or an atom).
-     If this is not supplied it will default to `field_id`
+  Options:
+
+    * `:foreign_key` (optional) - The name of the foreign key (as a string or an atom).
+      If this is not supplied it will default to `field_id`
   """
-  def forage_select(form, field, opts) do
+  def forage_select(form, field, path, opts \\ []) do
     # Params
-    path = Keyword.fetch!(opts, :path)
     foreign_key = Keyword.get(opts, :foreign_key, "#{field}_id")
     class = Keyword.get(opts, :class, "form-control")
     # Derived values
-    field_value = Map.get(form.data, field)
+    field_value = input_value(form, field)
     field_id = field_value && Map.get(field_value, :id, nil)
     field_text = display_relation(field_value)
 
@@ -335,7 +462,20 @@ defmodule ForageWeb.ForageView do
     """
   end
 
-  def forage_static_select(form, field, opts) do
+  @doc """
+  Widget to select multiple external resources using the Javascript Select2 widget.
+
+  Parameters:
+
+    * `form` (`%Phoenix.Html.Form.t/1`)- the form
+    * `field` (atom)
+
+  Options:
+
+    * `:foreign_key` (optional) - The name of the foreign key (as a string or an atom).
+      If this is not supplied it will default to `"\#\{field\}_id"`
+  """
+  def forage_static_select(form, field, opts \\ []) do
     field_name_in_input =
       # There are three cases:
       case Keyword.get(opts, :foreign_key) do
@@ -387,19 +527,17 @@ defmodule ForageWeb.ForageView do
   Widget to select multiple external resources using the Javascript Select2 widget.
 
   Parameters:
-  * `form` (`%Phoenix.HTml.Form.t/1`)- the form
-  * `field` (atom)
 
-  Required options:
+    * `form` (`%Phoenix.Html.Form.t/1`)- the form
+    * `field` (atom)
+    * `path` (binary) - the URL from which to request the data
 
-  * `:path` (required) - the URL from which to request the data
-    This function won't be applied to values requested from the server after
-  * `:foreign_key` (optional) - The name of the foreign key (as a string or an atom).
-     If this is not supplied it will default to `"\#\{field\}_id"`
+  Options:
+
+    * `:foreign_key` (optional) - The name of the foreign key (as a string or an atom).
+      If this is not supplied it will default to `"\#\{field\}_id"`
   """
-  def forage_multiple_select(form, field, opts) do
-    # Params
-    path = Keyword.fetch!(opts, :path)
+  def forage_multiple_select(form, field, path, _opts) do
     # Derived values
     field_values =
       case Map.get(form.data, field) do
@@ -434,31 +572,34 @@ defmodule ForageWeb.ForageView do
   Widget to select an external resource using the Javascript Select2 widget.
 
   Parameters:
-  * `form` (`%Phoenix.HTml.Form.t/1`)- the form
-  * `field` (atom)
 
-  Required options:
+    * `form` (`%Phoenix.Html.Form.t/1`)- the form
+    * `field` (atom)
+    * `path` (binary) - the URL from which to request the data
 
-  * `:path` (required) - the URL from which to request the data
+  Options:
+
   * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
      If this is not supplied it will default to `field_id`
   """
-  def forage_select_filter(form, field, opts) do
+  def forage_select_filter(form, field, path, opts \\ []) do
     # Params
-    path = Keyword.fetch!(opts, :path)
+    class = Keyword.get(opts, :class, "")
     field_value = Map.get(form.data, field)
     field_id = field_value && Map.get(field_value, :id, nil)
     field_text = display_relation(field_value)
 
     ~e"""
-    <select
-      name="_filter[<%= field %>_id][val]"
-      class="form-control"
-      data-forage-select2-widget="true"
-      data-url="<%= path %>">
-        <option value="<%= field_id %>"><%= field_text %></option>
-    </select>
-    <input type="hidden" name="_filter[<%= field %>_id][op]" value="equal_to"/>
+    <div class="<%= class %>">
+      <select
+        name="_filter[<%= field %>_id][val]"
+        class="form-control"
+        data-forage-select2-widget="true"
+        data-url="<%= path %>">
+          <option value="<%= field_id %>"><%= field_text %></option>
+      </select>
+      <input type="hidden" name="_filter[<%= field %>_id][op]" value="equal_to"/>
+    </div>
     """
   end
 
@@ -478,12 +619,8 @@ defmodule ForageWeb.ForageView do
     {"Less than or equal to", "less_than_or_equal_to"}
   ]
 
-  @operator_class "col-sm-3"
-  @value_class "col-sm-9"
-
-  defp name_to_filter_id(name) do
-    ["_filter", to_string(name)]
-  end
+  @operator_class "col-sm-5"
+  @value_class "col-sm-7"
 
   defp sort_direction(conn, field) do
     direction_string = get_in(conn.params, ["_sort", to_string(field), "direction"])
@@ -576,20 +713,40 @@ defmodule ForageWeb.ForageView do
   end
 
   @doc """
-  Form group for horizontal forms.
+  Form group with support for internationalization.
   """
-  def forage_horizontal_form_group(name, opts \\ [], do: content) do
-    label = Keyword.get(opts, :label, [Naming.humanize(name), ":"])
-    input_id = Keyword.get(opts, :id, name_to_filter_id(name))
-    {label_class, inputs_class} = Keyword.get(opts, :classes, {"col-sm-2", "col-sm-10"})
+  def forage_form_group(form, field, label, error_helpers, opts \\ [], input_fun) do
+    ~e"""
+    <div class="form-group">
+      <%= Form.label form, field, label, class: "form-label" %>
+      <%= input_fun.(form, field, opts) %>
+      <%= forage_error_tag(form, field, error_helpers) %>
+    </div>
+    """
+  end
+
+  @doc """
+  Horizontal form group with support for internationalization by taking in
+  the application's `error_helpers` module.
+
+  *You shouldn't need to use this function directly*.
+  You can use the `c:ForageWeb.ForageView.forage_form_group/5` callback
+  defined in your view module, which impoements a specialized version
+  of this function using your application's `error_helpers` module.
+  """
+  def forage_horizontal_form_group(form, field, label, error_helpers, opts, input_fun) when is_list(opts) do
+    tight? = Keyword.get(opts, :tight, false)
+    margin_bottom = (tight? && " mb-2") || ""
+    {{label_class, inputs_class}, opts} = Keyword.pop(opts, :classes, {"col-sm-3 text-left", "col-sm-9"})
+    full_label_class = label_class <> " col-form-label"
 
     ~e"""
-    <div class="form-group row">
-      <label for="<%= input_id %>" class="text-right col-form-label <%= label_class %>">
-        <%= label %>
-      </label>
-      <div class="<%= inputs_class %>">
-        <%= content %>
+    <div>
+      <div class="form-group row<%= margin_bottom %>">
+        <%= Form.label form, field, label, class: full_label_class %>
+        <%= input_fun.(form, field, [{:class, inputs_class} | opts]) %>
+        <div class="<%= label_class %>"></div>
+        <%= forage_horizontal_error_tag(form, field, error_helpers, inputs_class) %>
       </div>
     </div>
     """
@@ -610,7 +767,6 @@ defmodule ForageWeb.ForageView do
       options
       |> Keyword.put_new(:as, :_filter)
       |> Keyword.put_new(:method, "get")
-      |> Keyword.put_new(:class, "form-horizontal")
 
     form_for(conn, action, new_options, fun)
   end
@@ -647,10 +803,11 @@ defmodule ForageWeb.ForageView do
           {operator, value}
       end
 
-    {operator_class, value_class} = Keyword.get(opts, :classes, {@operator_class, @value_class})
+    filter_class = Keyword.get(opts, :class, "")
+    {operator_class, value_class} = Keyword.get(opts, :filter_classes, {@operator_class, @value_class})
 
     ~e"""
-    <div class="row">
+    <div class="row <%= filter_class %>">
       <div class="<%= operator_class %>">
         <select name="_filter[<%= name %>][op]" class="form-control">
           <%= for {op_name, op_value} <- operators do %>
@@ -665,23 +822,23 @@ defmodule ForageWeb.ForageView do
     """
   end
 
-  def forage_as_html(resource) do
-    Display.as_html(resource)
-  end
+  def forage_as_html(nil), do: ""
+  def forage_as_html(%Ecto.Association.NotLoaded{}), do: "- not loaded -"
+  def forage_as_html(resource), do: Display.as_html(resource)
 
-  def forage_as_text(resource) do
-    Display.as_text(resource)
-  end
+  def forage_as_text(nil), do: ""
+  def forage_as_text(%Ecto.Association.NotLoaded{}), do: "- not loaded -"
+  def forage_as_text(resource), do: Display.as_text(resource)
 
   @doc """
   A filter that works on text.
 
   It supports the following operators:
 
-  * Contains
-  * Equal
-  * Starts with
-  * Ends with
+    * Contains
+    * Equal
+    * Starts with
+    * Ends with
 
   ## Examples
 
@@ -696,11 +853,11 @@ defmodule ForageWeb.ForageView do
 
   It supports the following operators:
 
-  * Equal to
-  * Greater than
-  * Less than
-  * Greater than or equal to
-  * Less than or equal to
+    * Equal to
+    * Greater than
+    * Less than
+    * Greater than or equal to
+    * Less than or equal to
 
   ## Examples
 
@@ -715,54 +872,18 @@ defmodule ForageWeb.ForageView do
 
   It supports the following operators:
 
-  * Equal to
-  * Greater than
-  * Less than
-  * Greater than or equal to
-  * Less than or equal to
+    * Equal to
+    * Greater than
+    * Less than
+    * Greater than or equal to
+    * Less than or equal to
 
   ## Examples
 
   TODO
   """
-  def forage_date_filter(form, field_spec, opts \\ []) do
-    operators = Keyword.get(opts, :operators, @number_operators)
-    # Extract the field name from the id if necessary
-    {field_values, name} = input_value_and_name(form, field_spec)
-
-    {operator, value} =
-      case field_values do
-        nil ->
-          [{_operator_name, operator_value} | _rest] = operators
-          {operator_value, nil}
-
-        %{"op" => operator, "val" => value} ->
-          {operator, value}
-      end
-
-    {operator_class, value_class} = Keyword.get(opts, :classes, {@operator_class, @value_class})
-
-    opts =
-      opts
-      |> Keyword.put_new(:name, "_filter[#{name}][val]")
-      |> Keyword.put_new(:value, value)
-
-    input = forage_date_input(form, name, opts)
-
-    ~e"""
-    <div class="row">
-      <div class="<%= operator_class %>">
-        <select name="_filter[<%= name %>][op]" class="form-control">
-          <%= for {op_name, op_value} <- operators do %>
-            <option value="<%= op_value %>"<%= if op_value == operator do %> selected="true"<% end %>><%= op_name %></option>
-          <% end %>
-        </select>
-      </div>
-      <div class="<%= value_class %>">
-        <%= input %>
-      </div>
-    </div>
-    """
+  def forage_date_filter(form, name, opts \\ []) do
+    generic_forage_filter("date", form, name, @number_operators, opts)
   end
 
   @doc """
@@ -770,11 +891,11 @@ defmodule ForageWeb.ForageView do
 
   It supports the following operators:
 
-  * Equal to
-  * Greater than
-  * Less than
-  * Greater than or equal to
-  * Less than or equal to
+    * Equal to
+    * Greater than
+    * Less than
+    * Greater than or equal to
+    * Less than or equal to
 
   ## Examples
 
@@ -789,11 +910,11 @@ defmodule ForageWeb.ForageView do
 
   It supports the following operators:
 
-  * Equal to
-  * Greater than
-  * Less than
-  * Greater than or equal to
-  * Less than or equal to
+    * Equal to
+    * Greater than
+    * Less than
+    * Greater than or equal to
+    * Less than or equal to
 
   ## Examples
 
@@ -802,36 +923,4 @@ defmodule ForageWeb.ForageView do
   def forage_datetime_filter(form, name, opts \\ []) do
     generic_forage_filter("datetime", form, name, @number_operators, opts)
   end
-
-  # @doc """
-  # Datepicker widget based on bootstrap calendar (heavy but gets the work done)
-  # Actually it might be better to just use the default HTMl datepicker widget.
-  # """
-  # def forage_date_input(form, field, opts \\ []) do
-  #   opts =
-  #     opts
-  #     |> Keyword.delete(:datepicker_opts)
-  #     |> Keyword.put_new(:"data-forage-datepicker-widget", "true")
-  #     |> Keyword.put_new(:class, "form-control")
-
-  #   generic_input(:date, form, field, opts)
-  # end
-
-  # # Copied from Phoenix.Form
-  # defp generic_input(type, form, field, opts)
-  #      when is_list(opts) and (is_atom(field) or is_binary(field)) do
-  #   opts =
-  #     opts
-  #     |> Keyword.put_new(:type, type)
-  #     |> Keyword.put_new(:id, Form.input_id(form, field))
-  #     |> Keyword.put_new(:name, Form.input_name(form, field))
-  #     |> Keyword.put_new(:value, Form.input_value(form, field))
-  #     |> Keyword.update!(:value, &maybe_html_escape/1)
-
-  #   Tag.tag(:input, opts)
-  # end
-
-  # Copied from Phoenix.Form
-  # defp maybe_html_escape(nil), do: nil
-  # defp maybe_html_escape(value), do: html_escape(value)
 end

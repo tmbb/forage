@@ -1,4 +1,7 @@
 defmodule Forage.Codec.Exceptions.InvalidAssocError do
+  @moduledoc """
+  The given association field is invalid for the given schema.
+  """
   defexception [:message]
 
   @impl true

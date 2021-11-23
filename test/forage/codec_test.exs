@@ -103,7 +103,7 @@ defmodule Forage.CodecTest do
         }
 
       # TODO: test the query somehow agains a real DB
-      {_plan, _query} = Forage.QueryBuilder.build_query(encoded, PrimarySchema)
+      {_plan, _query} = Forage.QueryBuilder.build_plan_and_query(encoded, PrimarySchema)
 
       assert Decoder.decode(encoded, PrimarySchema) == decoded
       assert Encoder.encode(decoded) == encoded

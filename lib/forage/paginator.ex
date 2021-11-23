@@ -1,5 +1,7 @@
 defmodule Forage.Paginator do
   alias Forage.QueryBuilder
+  alias Forage.ForagePlan
+  alias Ecto.Query
 
   defp get_sort_direction!(forage_plan) do
     all_asc? = Enum.all?(forage_plan.sort, fn field_data -> field_data[:direction] == :asc end)
@@ -23,9 +25,39 @@ defmodule Forage.Paginator do
   Requires a repo with a `paginate/2` function.
   The easiest way of having a compliant repo is to `use Paginator, ...` inside your `Repo`.
   """
-  def paginate(params, schema, repo, options, repo_opts \\ []) do
+  @spec paginate(ForagePlan.t() | map(), atom() | Query.t(), atom(), Keyword.t(), Keyword.t()) :: map()
+  def paginate(forage_plan_or_params, schema_or_query, repo, options, repo_opts \\ [])
+
+  def paginate(%ForagePlan{} = forage_plan, %Query{} = query, repo, options, repo_opts) do
+    # The cursor fields are the fields used to sort the query
+    cursor_fields = get_fields(forage_plan)
+
+    pagination_limit =
+      case Keyword.fetch(options, :limit) do
+        {:ok, limit} -> [{:limit, limit}]
+        :error -> []
+      end
+
+    # The sort direction is identified from the Ecto query.
+    # It's possible that the ecto query sorts the sort fields in different directions.
+    # If that happens, raise an exception with extreme prejudice.
+    sort_direction = get_sort_direction!(forage_plan)
+    # Gather all pagination option in one place
+    pagination_options =
+      forage_plan.pagination ++
+        pagination_limit ++
+        [
+          cursor_fields: cursor_fields,
+          sort_direction: sort_direction
+        ]
+
+    # Finally, run the (paginated) query and return the data.
+    repo.paginate(query, pagination_options ++ repo_opts)
+  end
+
+  def paginate(%{} = params, schema, repo, options, repo_opts) when is_atom(schema) do
     # Get an initial query (before pagination)
-    {forage_plan, query} = QueryBuilder.build_query(params, schema, options)
+    {forage_plan, query} = QueryBuilder.build_plan_and_query(params, schema, options)
     # The cursor fields are the fields used to sort the query
     cursor_fields = get_fields(forage_plan)
 
@@ -60,7 +92,7 @@ defmodule Forage.Paginator do
 
   defp pagination_options_and_query(params, schema, options) do
     # Get an initial query (before pagination)
-    {forage_plan, query} = QueryBuilder.build_query(params, schema, options)
+    {forage_plan, query} = QueryBuilder.build_plan_and_query(params, schema, options)
     # The cursor fields are the fields used to sort the query
     cursor_fields = get_fields(forage_plan)
 

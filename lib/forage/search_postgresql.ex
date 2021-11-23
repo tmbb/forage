@@ -1,11 +1,16 @@
-defmodule Forage.Search do
+defmodule Forage.SearchPostgreSQL do
   @moduledoc """
-  Utilities to help with search
+  Utilities to help with search in PostgreSQL databases.
+  Support for other databases may be added in the future.
   """
 
   alias Ecto.Migration
   require ExUnit.Assertions, as: Assertions
 
+  @doc """
+  *For use in migration files*.
+  Create the necessary extensions in the database.
+  """
   def define_forage_unaccent() do
     sql_unaccent_up = "CREATE EXTENSION IF NOT EXISTS unaccent;"
     sql_pg_trgm_up = "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
@@ -19,13 +24,19 @@ defmodule Forage.Search do
       LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
       """
 
-    sql_unaccent_down = "DROP EXTENSION unaccent;"
-    sql_pg_trgm_down = "DROP EXTENSION pg_trgm;"
-    sql_define_function_down = "DROP FUNCTION public.forage_unaccent(text);"
+    # These "down" commands revert the effect of the "up" commands.
+    # However, we don't actually want to revert the effect of the commands above
+    # when reverting the migration, because that might make some older migrations invalid.
+    # These "down" commands are only kept here for reference purposes
 
-    Migration.execute(sql_unaccent_up, sql_unaccent_down)
-    Migration.execute(sql_pg_trgm_up, sql_pg_trgm_down)
-    Migration.execute(sql_define_function_up, sql_define_function_down)
+    _sql_unaccent_down = "DROP EXTENSION unaccent;"
+    _sql_pg_trgm_down = "DROP EXTENSION pg_trgm;"
+    _sql_define_function_down = "DROP FUNCTION public.forage_unaccent(text);"
+
+    # When running the migrations, the "down" command will be the empty string.
+    Migration.execute(sql_unaccent_up, "")
+    Migration.execute(sql_pg_trgm_up, "")
+    Migration.execute(sql_define_function_up, "")
   end
 
   defp make_column_builder(columns) do
@@ -46,12 +57,12 @@ defmodule Forage.Search do
   def add_trigram_index(table, column) do
     # SQL statements to create and drop the index
     sql_index_up = """
-    CREATE INDEX #{column}_idx ON #{table}
+    CREATE INDEX #{table}_#{column}_idx ON #{table}
       USING GIN (#{column} gin_trgm_ops);
     """
 
     sql_index_down = """
-    DROP INDEX #{column}_idx;
+    DROP INDEX #{table}_#{column}_idx;
     """
 
     Migration.execute(sql_index_up, sql_index_down)
@@ -98,6 +109,11 @@ defmodule Forage.Search do
     Migration.execute(sql_column_up, sql_column_down)
   end
 
+  @doc """
+  Adds a GENERATED column to help with accent-insensitive search across several columns.
+
+  This column
+  """
   def add_unaccented_search_column_and_index(table, search_column, columns) do
     add_unnaccented_search_column(table, search_column, columns)
     add_trigram_index(table, search_column)
@@ -144,7 +160,7 @@ defmodule Forage.Search do
     field_string = to_string(field)
     map_with_new_filter = %{
       field_string => %{
-        "op" => "contains_ignore_accents",
+        "op" => "postgresql:contains_ignore_accents",
         "val" => term
       }
     }

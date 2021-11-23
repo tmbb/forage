@@ -1,4 +1,7 @@
 defmodule Forage.Codec.Exceptions.InvalidPaginationDataError do
+  @moduledoc """
+  Invalid pagination data was used.
+  """
   defexception [:message]
 
   @impl true

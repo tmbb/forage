@@ -19,7 +19,5 @@ defmodule Forage.ForagePlan do
             sort: [],
             pagination: []
 
-  def new(opts) do
-    struct(__MODULE__, opts)
-  end
+  @type t :: %__MODULE__{}
 end

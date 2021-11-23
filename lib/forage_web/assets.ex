@@ -1,4 +1,7 @@
 defmodule ForageWeb.Assets do
+  @moduledoc """
+  Static assets for mandarin pages.
+  """
   @external_resource "lib/forage_web/assets/select2.js"
   @external_resource "lib/forage_web/assets/datepicker.js"
 

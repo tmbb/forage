@@ -27,7 +27,7 @@ defmodule Forage.MixProject do
   defp deps do
     [
       {:ecto, "~> 3.0"},
-      {:phoenix_html, "~> 2.10"},
+      {:phoenix_html, "~> 3.0"},
       {:json, ">= 0.0.0"},
       {:paginator, "~> 1.0"},
       {:ex_doc, "~> 0.23", only: :dev}

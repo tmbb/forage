@@ -44,7 +44,7 @@ defmodule Forage.QueryBuilder.Filter.AddFilterToQuery do
       end
 
       # Text
-      defp unquote(filter_adder)(unquote(n), unquote(i), true, "contains_ignore_accents", field_atom, value) do
+      defp unquote(filter_adder)(unquote(n), unquote(i), true, "postgresql:contains_ignore_accents", field_atom, value) do
         escaped = Forage.QueryBuilder.Filter.AddFilterToQuery.escape_regex(value)
         dynamic(
           unquote(variables_list),
@@ -112,7 +112,7 @@ defmodule Forage.QueryBuilder.Filter.AddFilterToQuery do
         dynamic(unquote(variables_list), ilike(field(unquote(var), ^field_atom), ^text) and ^fragment)
       end
 
-      defp unquote(filter_adder)(unquote(n), unquote(i), fragment, "contains_ignore_accents", field_atom, value) do
+      defp unquote(filter_adder)(unquote(n), unquote(i), fragment, "postgresql:contains_ignore_accents", field_atom, value) do
         escaped = Forage.QueryBuilder.Filter.AddFilterToQuery.escape_regex(value)
         dynamic(
           unquote(variables_list),

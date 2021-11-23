@@ -1,4 +1,8 @@
 defmodule Forage.Codec.Exceptions.InvalidSortDirectionError do
+  @moduledoc """
+  An invalid sort direction was used.
+  Valid sort directions are `"asc"` and `"desc"`.
+  """
   defexception [:message]
 
   @impl true

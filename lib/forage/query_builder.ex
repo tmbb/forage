@@ -1,5 +1,4 @@
 defmodule Forage.QueryBuilder do
-  @moduledoc false
   import Ecto.Query, only: [from: 2]
   alias Forage.Codec.Decoder
   alias Forage.QueryBuilder.Filter
@@ -25,18 +24,19 @@ defmodule Forage.QueryBuilder do
     end
   end
 
-  def join_assocs(query, assocs) do
-    Enum.reduce(assocs, query, fn {:assoc, {_, local, _}}, query_so_far ->
-      from([p, ...] in query_so_far,
-        join: x in assoc(p, ^local)
-      )
-    end)
+  def join_assocs(query, _assocs) do
+    # Enum.reduce(assocs, query, fn {:assoc, {_, local, _}}, query_so_far ->
+    #   from([p, ...] in query_so_far,
+    #     join: x in assoc(p, ^local)
+    #   )
+    # end)
+    query
   end
 
   @doc """
-  Build a (non-paginated) query from `params`.
+  Build a forage plan and a (non-paginated) query from `params`.
   """
-  def build_query(params, schema, options \\ []) do
+  def build_plan_and_query(params, schema, options \\ []) do
     # Process the raw Phoenix params into a form that can be more easily digested
     # by Forage and some other pagination library like scrivener
     raw_forage_plan = Decoder.decode(params, schema)
@@ -64,6 +64,11 @@ defmodule Forage.QueryBuilder do
 
     # Return the forage plan and the query
     {forage_plan, final_query}
+  end
+
+  def build_query(params, schema, options \\ []) do
+    {_forage_plan, final_query} = build_plan_and_query(params, schema, options)
+    final_query
   end
 
   # Helpers

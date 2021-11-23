@@ -1,4 +1,7 @@
 defmodule Forage.Codec.Exceptions.InvalidFieldError do
+  @moduledoc """
+  The given field is invalid for the given schema.
+  """
   defexception [:message]
 
   @impl true
