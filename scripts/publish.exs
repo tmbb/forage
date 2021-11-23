@@ -95,7 +95,7 @@ defmodule Publisher.Changelog do
     contents = Common.read_file(@release_filename)
 
     {type, text} =
-      case Regex.run(@release_type_regex, contents) |> IO.inspect() do
+      case Regex.run(@release_type_regex, contents) do
         [_line, _pre, type, text] ->
           {type, String.trim(text)}
 
