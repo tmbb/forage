@@ -95,12 +95,12 @@ defmodule Publisher.Changelog do
     contents = Common.read_file(@release_filename)
 
     {type, text} =
-      case Regex.run(@release_type_regex, contents) do
+      case Regex.run(@release_type_regex, contents) |> IO.inspect() do
         [_line, _pre, type, text] ->
           {type, String.trim(text)}
 
         _ ->
-          raise "Invalid project version in your mix.exs file"
+          raise "Invalid release type in your RELEASE.md file"
       end
 
     {type, text}
