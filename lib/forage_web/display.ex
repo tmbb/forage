@@ -6,7 +6,7 @@ defprotocol ForageWeb.Display do
 
   @doc """
   Displays the model as plaintext.
-
+  
   This is meant to be used to diplay options in a select widget and
   when you want to show the user a resource as HTML.
   """
@@ -14,9 +14,9 @@ defprotocol ForageWeb.Display do
 
   @doc """
   Displays the model as HTML.
-
-  This is meant to be used to diplay options in a select widget and
-  when you want to show the user a resource as HTML.
+  
+  This is meant to be used to diplay the resource as HTML
+  (as opposed to plaintext)
   """
   def as_html(model)
 end

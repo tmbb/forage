@@ -26,12 +26,12 @@ defmodule ForageWeb.ForageView do
   TODO
   """
   @callback forage_form_group(
-    form_data(),
-    form_field(),
-    String.t(),
-    options(),
-    (form_data, form_field(), options() -> safe_html())
-  ) :: safe_html()
+              form_data(),
+              form_field(),
+              String.t(),
+              options(),
+              (form_data, form_field(), options() -> safe_html())
+            ) :: safe_html()
 
   @doc """
   Specialized version of `ForageWeb.ForageView.forage_horizontal_form_group/6`.
@@ -44,12 +44,12 @@ defmodule ForageWeb.ForageView do
   TODO
   """
   @callback forage_horizontal_form_group(
-    form_data(),
-    form_field(),
-    String.t(),
-    options(),
-    (form_data, form_field(), options() -> safe_html())
-  ) :: safe_html()
+              form_data(),
+              form_field(),
+              String.t(),
+              options(),
+              (form_data, form_field(), options() -> safe_html())
+            ) :: safe_html()
 
   @doc """
   Specialized version of `ForageWeb.ForageView.forage_form_check/6`.
@@ -62,12 +62,12 @@ defmodule ForageWeb.ForageView do
   TODO
   """
   @callback forage_form_check(
-    form_data(),
-    form_field(),
-    String.t(),
-    options(),
-    (form_data, form_field(), options() -> safe_html())
-  ) :: safe_html()
+              form_data(),
+              form_field(),
+              String.t(),
+              options(),
+              (form_data, form_field(), options() -> safe_html())
+            ) :: safe_html()
 
   @doc """
   Specialized version of `ForageWeb.ForageView.forage_inline_form_check/6`.
@@ -80,21 +80,75 @@ defmodule ForageWeb.ForageView do
   TODO
   """
   @callback forage_inline_form_check(
-    form_data(),
-    form_field(),
-    String.t(),
-    options(),
-    (form_data, form_field(), options() -> safe_html())
-  ) :: safe_html()
+              form_data(),
+              form_field(),
+              String.t(),
+              options(),
+              (form_data, form_field(), options() -> safe_html())
+            ) :: safe_html()
 
   @doc """
   Imports functions from `ForageWeb.ForageView` and defines a number of functions
   specialized for the given resource.
 
+  Expects the following options:
+
+    * `:routes_module` (required) - ...
+    * `:error_helpers_module` (required) - ...
+    * `:prefix` (required) - ...
+    * `:prefixes` (optional) - ...
+
+  This macro defines a number of functions specialized to the parameters above.
+  Some of those functions are indicated as callbacks for the `ForageWeb.ForageView`
+  behaviour (because `ForageView` will always define them) and some of them are not
+  because the function name may depend on the prefixes.
+
+  ### Questionable design decisions
+
+  Some design decisions are a little bit questionable and deserve a longer explanation.
+
+  It might seem weird that we are defining so many functions so similar
+  to the ones defined in `Forage.ForageView` itself.
+  Forage uses [Bootstrap4](https://getbootstrap.com/docs/4.6/getting-started/introduction/)
+  templates and Forage widgets are based on the default
+  `Phoenix.HTML` widgets. To deal with errors, Phoenix requires an `ErrorHelpers` module
+  (defined by default by the `phx.new` generator), and Bootstrap requires the ability
+  to inject the (translated) errors into the
+  [form group](https://getbootstrap.com/docs/4.6/components/forms/#form-groups).
+  This means that the `ForageWeb.ForageView.forage_form_group/6` widget (and similar ones)
+  need to be aware of the `ErrorHelpers`. This means that the user has to pass the `ErrorHelpers`
+  module as an argument to all form groups, which would clutter the code for little benefit.
+  By defining a `c:ForageWeb.ForageView.forage_form_group/5` function which already
+  incorporates the `ErrorHelpers` module, we can make for (slightly) cleaner code.
+  By default, you should never have to use the
+
+  The way Bootstrap and Phoenix deal with internationalization
+  requires an `ErrorHelpers` modules and the ability to inject the
+  `ForageWeb.ForageView.forage_form_group/6` function and should always use the
+  `c:ForageWeb.ForageView.forage_form_group/5` function instead (and similar ones)
+
   TODO: complete this.
+
+  ## Examples
+
+      defmodule AppWeb.Backoffice.EmployeeView do
+        use AppWeb, :view
+
+        use ForageWeb.ForageView,
+          routes_module: Routes,
+          error_helpers_module: AppWeb.ErrorHelpers,
+          prefix: :backoffice_employee,
+          prefixes: [
+            backoffice_department: MandarinDemo.Backoffice.Department,
+            backoffice_function: MandarinDemo.Backoffice.Function,
+            backoffice_benefit: MandarinDemo.Backoffice.Benefit
+          ]
+      end
   """
   defmacro __using__(options) do
     caller_module = __CALLER__.module
+
+    prefixes_args = Keyword.get(options, :prefixes, [])
 
     routes_module =
       case Keyword.fetch(options, :routes_module) do
@@ -115,7 +169,8 @@ defmodule ForageWeb.ForageView do
     maybe_internationalized_forage_widgets =
       case Keyword.fetch(options, :error_helpers_module) do
         :error ->
-          Logger.warn(fn -> """
+          Logger.warn(fn ->
+            """
             No `:error_helpers_module` was specified in the `use #{caller_module}, ...` call.
             This way, Forage can't generate the specialized helpers.
             If you don't want to generate the helpers, explicitly pass `nil` as an argument:
@@ -136,12 +191,48 @@ defmodule ForageWeb.ForageView do
 
     prefixed_widgets = prefixed_forage_widgets(routes_module, prefix)
 
+    resource_links = define_resource_links(routes_module, prefixes_args)
+
     quote do
       import ForageWeb.ForageView
 
       unquote(maybe_internationalized_forage_widgets)
       unquote(prefixed_widgets)
+
+      def forage_list_as_html_with_links(conn, resources) do
+        resources
+        |> Enum.map(&forage_as_html_with_link(conn, &1))
+        |> Enum.intersperse(", ")
+      end
+
+      # Handle the `nil` case here to simplify template logic
+      def forage_as_html_with_link(conn, nil) do
+        ""
+      end
+
+      # Handle the "interesting cases"
+      unquote(resource_links)
     end
+  end
+
+  defp define_resource_links(routes_module, prefixes) do
+    for {name, struct_module} <- prefixes do
+      function_name = :"#{name}_path"
+
+      quote do
+        def forage_as_html_with_link(conn, %unquote(struct_module){} = resource) do
+          href = apply(unquote(routes_module), unquote(function_name), [conn, :show, resource])
+          ForageWeb.ForageView.do_forage_as_html_with_link(resource, href)
+        end
+      end
+    end
+  end
+
+  @doc false
+  def do_forage_as_html_with_link(resource, href) do
+    ~e"""
+    <a href="<%= href %>"><%= forage_as_html(resource) %></a>
+    """
   end
 
   defp prefixed_forage_widgets(routes_module, prefix) do
@@ -190,7 +281,7 @@ defmodule ForageWeb.ForageView do
       internationalization_aware_forage_widgets(error_helpers, :forage_form_group, 5)
 
     forage_horizontal_form_group_docs =
-        internationalization_aware_forage_widgets(error_helpers, :forage_horizontal_form_group, 5)
+      internationalization_aware_forage_widgets(error_helpers, :forage_horizontal_form_group, 5)
 
     forage_form_check_docs =
       internationalization_aware_forage_widgets(error_helpers, :forage_form_check, 5)
@@ -200,7 +291,7 @@ defmodule ForageWeb.ForageView do
 
     quote do
       @doc unquote(forage_form_group_docs)
-      def forage_form_group(form_data, field, label, opts, input_fun) do
+      def forage_form_group(form_data, field, label, opts \\ [], input_fun) do
         ForageWeb.ForageView.forage_form_group(
           form_data,
           field,
@@ -212,7 +303,8 @@ defmodule ForageWeb.ForageView do
       end
 
       @doc unquote(forage_horizontal_form_group_docs)
-      def forage_horizontal_form_group(form_data, field, label, opts, input_fun) when is_list(opts) do
+      def forage_horizontal_form_group(form_data, field, label, opts \\ [], input_fun)
+          when is_list(opts) do
         ForageWeb.ForageView.forage_horizontal_form_group(
           form_data,
           field,
@@ -224,7 +316,7 @@ defmodule ForageWeb.ForageView do
       end
 
       @doc unquote(forage_form_check_docs)
-      def forage_form_check(form_data, field, label, opts, input_fun) do
+      def forage_form_check(form_data, field, label, opts \\ [], input_fun) do
         ForageWeb.ForageView.forage_form_check(
           form_data,
           field,
@@ -236,12 +328,13 @@ defmodule ForageWeb.ForageView do
       end
 
       @doc unquote(forage_inline_form_check_docs)
-      def forage_inline_form_check(form_data, field, label, opts, input_fun) do
+      def forage_inline_form_check(form_data, field, label, opts \\ [], input_fun) do
         ForageWeb.ForageView.forage_inline_form_check(
           form_data,
           field,
           label,
           unquote(error_helpers),
+          opts,
           input_fun
         )
       end
@@ -256,6 +349,13 @@ defmodule ForageWeb.ForageView do
     """
   end
 
+  @doc """
+  Renders validation errors inside a form group.
+
+  By default, you should not have to use this function.
+  The functions defined when you `use ForageWeb.ForageView, ...` in your view module
+  already take care of rendering errors the right way.
+  """
   def forage_error_tag(form, field, error_helpers) do
     Enum.map(Keyword.get_values(form.errors, field), fn error ->
       ~e"""
@@ -266,6 +366,13 @@ defmodule ForageWeb.ForageView do
     end)
   end
 
+  @doc """
+  Renders validation errors inside a horizontal form group.
+
+  By default, you should not have to use this function.
+  The functions defined when you `use ForageWeb.ForageView, ...` in your view module
+  already take care of rendering errors the right way.
+  """
   def forage_horizontal_error_tag(form, field, error_helpers, class) do
     Enum.map(Keyword.get_values(form.errors, field), fn error ->
       ~e"""
@@ -278,6 +385,10 @@ defmodule ForageWeb.ForageView do
 
   @doc """
   TODO
+
+  By default, you should not have to use this function.
+  You should `use ForageWeb.ForageView, ...` in your view module
+  and use the `forage_form_check/5` function defined by that macro instead.
   """
   def forage_form_check(form, field, label, error_helpers, opts, input_fun) do
     forage_generic_form_check(form, field, label, error_helpers, opts, false, input_fun)
@@ -285,6 +396,10 @@ defmodule ForageWeb.ForageView do
 
   @doc """
   TODO
+
+  By default, you should not have to use this function.
+  You should `use ForageWeb.ForageView, ...` in your view module
+  and use the `forage_inline_form_check/5` function defined by that macro instead.
   """
   def forage_inline_form_check(form, field, label, error_helpers, opts, input_fun) do
     forage_generic_form_check(form, field, label, error_helpers, opts, true, input_fun)
@@ -302,36 +417,37 @@ defmodule ForageWeb.ForageView do
     """
   end
 
-  def forage_row(widgets) do
-    [
-      ~e[<div class="row">],
-      Enum.map(widgets, fn w -> [~e[<div class="col">], w, ~e[</div>]] end),
-      ~e[</div>]
-    ]
-  end
+  # @doc false
+  # def forage_row(widgets) do
+  #   [
+  #     ~e[<div class="row">],
+  #     Enum.map(widgets, fn w -> [~e[<div class="col">], w, ~e[</div>]] end),
+  #     ~e[</div>]
+  #   ]
+  # end
 
-  @doc """
-  Creates a fragment that can be reused in the same template.
+  # @doc """
+  # Creates a fragment that can be reused in the same template.
 
-  It's meant to be used in an EEx template, which has some synctatic
-  restrictions that make it hard to set a variable to a an EEx fragment.
+  # It's meant to be used in an EEx template, which has some synctatic
+  # restrictions that make it hard to set a variable to a an EEx fragment.
 
-  ## Example
+  # ## Example
 
-      <%= fragment widget do %>
-        <div class="my-widget">
-          Add an EEx fragment here.
-          Can contain <%= @dynamic %> fragments.
-        </div>
-      <% end %>
+  #     <%= fragment widget do %>
+  #       <div class="my-widget">
+  #         Add an EEx fragment here.
+  #         Can contain <%= @dynamic %> fragments.
+  #       </div>
+  #     <% end %>
 
-      <%= widget %>
-  """
-  defmacro fragment(var, [do: body]) do
-    quote do
-      unquote(var) = unquote(body)
-    end
-  end
+  #     <%= widget %>
+  # """
+  # defmacro fragment(var, [do: body]) do
+  #   quote do
+  #     unquote(var) = unquote(body)
+  #   end
+  # end
 
   defp classes_for_input(form, field, user_specified_classes) do
     case form.errors do
@@ -356,6 +472,9 @@ defmodule ForageWeb.ForageView do
     classes = classes_for_input(form, field, [class, " ", input_class])
     input_fun.(form, field, [{:class, classes} | opts])
   end
+
+  # Now we use some metaprogramming wizardry to define forage counterparts
+  # to normal Phoenix widgets to make them work better with Bootstrap templates.
 
   phoenix_form_input_names = [
     :checkbox,
@@ -408,31 +527,44 @@ defmodule ForageWeb.ForageView do
     See docs for `Phoenix.HTML.Form.#{name}/3`.
     """
     def unquote(forage_function_name)(form, field, opts \\ []) do
-      forage_generic_input(form, field, &Form.unquote(name)/3, opts, unquote(input_class))
+      forage_generic_input(form, field, &(Form.unquote(name) / 3), opts, unquote(input_class))
     end
 
     @doc """
     See docs for `Phoenix.HTML.Form.#{name}/3`.
+    A smaller version of the input widget.
     """
     def unquote(forage_function_name_small)(form, field, opts \\ []) do
-      forage_generic_input(form, field, &Form.unquote(name)/3, opts, unquote(input_class_small))
+      forage_generic_input(
+        form,
+        field,
+        &(Form.unquote(name) / 3),
+        opts,
+        unquote(input_class_small)
+      )
     end
 
     @doc """
     See docs for `Phoenix.HTML.Form.#{name}/3`.
+    A larger version of the input widget.
     """
     def unquote(forage_function_name_large)(form, field, opts \\ []) do
-      forage_generic_input(form, field, &Form.unquote(name)/3, opts, unquote(input_class_large))
+      forage_generic_input(
+        form,
+        field,
+        &(Form.unquote(name) / 3),
+        opts,
+        unquote(input_class_large)
+      )
     end
   end
-
 
   @doc """
   Widget to select multiple external resources using the Javascript Select2 widget.
 
   Parameters:
 
-    * `form` (`%Phoenix.Html.Form.t/1`)- the form
+    * `form` (`t:Phoenix.Html.Form.t/0`)- the form
     * `field` (atom)
     * `path` - the URL from which to request the data
 
@@ -440,6 +572,16 @@ defmodule ForageWeb.ForageView do
 
     * `:foreign_key` (optional) - The name of the foreign key (as a string or an atom).
       If this is not supplied it will default to `field_id`
+
+  You'll probably want to use it inside a `forage_form_group`.
+
+  ## Examples
+
+      <%= forage_form_group(f, :function,
+              dgettext("your_app", "Function"),
+              fn form, field, opts ->
+                forage_select(form, field, Routes.backoffice_function_path(@conn, :select), opts)
+              end) %>
   """
   def forage_select(form, field, path, opts \\ []) do
     # Params
@@ -467,7 +609,7 @@ defmodule ForageWeb.ForageView do
 
   Parameters:
 
-    * `form` (`%Phoenix.Html.Form.t/1`)- the form
+    * `form` (`t:Phoenix.Html.Form.t/0`) - the form
     * `field` (atom)
 
   Options:
@@ -476,8 +618,8 @@ defmodule ForageWeb.ForageView do
       If this is not supplied it will default to `"\#\{field\}_id"`
   """
   def forage_static_select(form, field, opts \\ []) do
+    # There are three cases:
     field_name_in_input =
-      # There are three cases:
       case Keyword.get(opts, :foreign_key) do
         # The foreign key isn't given.
         # We assume this is a one-to-* relation and infer
@@ -528,7 +670,7 @@ defmodule ForageWeb.ForageView do
 
   Parameters:
 
-    * `form` (`%Phoenix.Html.Form.t/1`)- the form
+    * `form` (`t:Phoenix.Html.Form.t/0`)- the form
     * `field` (atom)
     * `path` (binary) - the URL from which to request the data
 
@@ -536,6 +678,16 @@ defmodule ForageWeb.ForageView do
 
     * `:foreign_key` (optional) - The name of the foreign key (as a string or an atom).
       If this is not supplied it will default to `"\#\{field\}_id"`
+
+  The `path` must be a URL that returns JSON according to what the Javascript Select2 expects.
+
+  ## Example
+
+      <%= forage_form_group(f, :benefits,
+            dgettext("yupr_app", "Benefits"), [],
+            fn form, field, opts ->
+              forage_multiple_select(form, field, Routes.backoffice_benefit_path(@conn, :select), opts)
+            end) %>
   """
   def forage_multiple_select(form, field, path, _opts) do
     # Derived values
@@ -573,7 +725,7 @@ defmodule ForageWeb.ForageView do
 
   Parameters:
 
-    * `form` (`%Phoenix.Html.Form.t/1`)- the form
+    * `form` (`t:Phoenix.Html.Form.t/0`)- the form
     * `field` (atom)
     * `path` (binary) - the URL from which to request the data
 
@@ -581,6 +733,19 @@ defmodule ForageWeb.ForageView do
 
   * `:foreign_key` (optionsl) - The name of the foreign key (as a string or an atom).
      If this is not supplied it will default to `field_id`
+
+  This filter (like all forage filters) will add the appropriate parameters to your HTTP query
+  so that the Forage functions in the backend can create a properly paginated and filtered query.
+
+  ## Example
+
+  Filter a list of employees
+
+      <%= forage_horizontal_form_group(f, :department,
+            dgettext("mandarin.backoffice", "Department"), [],
+            fn form, field, opts ->
+              forage_select_filter(form, field, Routes.backoffice_department_path(@conn, :select), opts)
+            end) %>
   """
   def forage_select_filter(form, field, path, opts \\ []) do
     # Params
@@ -670,6 +835,7 @@ defmodule ForageWeb.ForageView do
     if resource.metadata.before do
       before_params = Map.put(conn.params, :_pagination, %{before: resource.metadata.before})
       destination = apply(mod, fun, [conn, :index, before_params])
+
       ~e'<li class="page-item"><a class="page-link" href="<%= destination %>"><%= contents %></a></li>'
     else
       ~e''
@@ -679,11 +845,14 @@ defmodule ForageWeb.ForageView do
   @doc """
   A link to the next page of filter results.
   Returns the empty string if the next page doesn't exist.
+
+  **TODO**: find a way of internationalizing the text in this widget.
   """
   def forage_pagination_link_next(conn, resource, mod, fun, contents) do
     if resource.metadata.after do
       after_params = Map.put(conn.params, :_pagination, %{after: resource.metadata.after})
       destination = apply(mod, fun, [conn, :index, after_params])
+
       ~e'<li class="page-item"><a class="page-link" href="<%= destination %>"><%= contents %></a></li>'
     else
       ~e''
@@ -697,7 +866,7 @@ defmodule ForageWeb.ForageView do
   If either the previous page or the next page doesn't exist,
   the respective link will be empty.
 
-  TODO
+  **TODO**: find a way of internationalizing the text in this widget.
   """
   def forage_pagination_widget(conn, resource, mod, fun, options) do
     previous_text = Keyword.get(options, :previous, "« Previous")
@@ -714,8 +883,13 @@ defmodule ForageWeb.ForageView do
 
   @doc """
   Form group with support for internationalization.
+
+  *You shouldn't need to use this function directly*.
+  You can use the `c:ForageWeb.ForageView.forage_horizontal_form_group/5` callback
+  defined in your view module, which impoements a specialized version
+  of this function using your application's `error_helpers` module.
   """
-  def forage_form_group(form, field, label, error_helpers, opts \\ [], input_fun) do
+  def forage_form_group(form, field, label, error_helpers, opts, input_fun) do
     ~e"""
     <div class="form-group">
       <%= Form.label form, field, label, class: "form-label" %>
@@ -734,10 +908,14 @@ defmodule ForageWeb.ForageView do
   defined in your view module, which impoements a specialized version
   of this function using your application's `error_helpers` module.
   """
-  def forage_horizontal_form_group(form, field, label, error_helpers, opts, input_fun) when is_list(opts) do
+  def forage_horizontal_form_group(form, field, label, error_helpers, opts, input_fun)
+      when is_list(opts) do
     tight? = Keyword.get(opts, :tight, false)
     margin_bottom = (tight? && " mb-2") || ""
-    {{label_class, inputs_class}, opts} = Keyword.pop(opts, :classes, {"col-sm-3 text-left", "col-sm-9"})
+
+    {{label_class, inputs_class}, opts} =
+      Keyword.pop(opts, :classes, {"col-sm-3 text-left", "col-sm-9"})
+
     full_label_class = label_class <> " col-form-label"
 
     ~e"""
@@ -752,9 +930,15 @@ defmodule ForageWeb.ForageView do
     """
   end
 
+  @doc false
   def forage_active_filters?(%{params: %{"_filter" => _}} = _conn), do: true
 
   def forage_active_filters?(_conn), do: false
+
+  @doc """
+  A form widget that generates an HTTP query to return data filtered
+  according to the filters in the form.
+  """
 
   @spec forage_filter_form_for(
           FormData.t(),
@@ -762,6 +946,7 @@ defmodule ForageWeb.ForageView do
           Keyword.t(),
           (FormData.t() -> Phoenix.HTML.unsafe())
         ) :: Phoenix.HTML.safe()
+
   def forage_filter_form_for(conn, action, options \\ [], fun) do
     new_options =
       options
@@ -789,6 +974,7 @@ defmodule ForageWeb.ForageView do
   end
 
   defp generic_forage_filter(type, form, field_spec, default_operators, opts) do
+    # A generic filter that can be specialized to different filter types
     operators = Keyword.get(opts, :operators, default_operators)
     # Extract the field name from the id if necessary
     {field_values, name} = input_value_and_name(form, field_spec)
@@ -804,7 +990,9 @@ defmodule ForageWeb.ForageView do
       end
 
     filter_class = Keyword.get(opts, :class, "")
-    {operator_class, value_class} = Keyword.get(opts, :filter_classes, {@operator_class, @value_class})
+
+    {operator_class, value_class} =
+      Keyword.get(opts, :filter_classes, {@operator_class, @value_class})
 
     ~e"""
     <div class="row <%= filter_class %>">
@@ -822,6 +1010,13 @@ defmodule ForageWeb.ForageView do
     """
   end
 
+  @doc """
+  Displays a resource as HTML.
+  The resource must implement support the `ForageWeb.Display` protocol.
+
+  This function works when the result is `nil` (it returns the empty string)
+  and when the resource is an association that hasn«' been loaded.
+  """
   def forage_as_html(nil), do: ""
   def forage_as_html(%Ecto.Association.NotLoaded{}), do: "- not loaded -"
   def forage_as_html(resource), do: Display.as_html(resource)
@@ -829,6 +1024,12 @@ defmodule ForageWeb.ForageView do
   def forage_as_text(nil), do: ""
   def forage_as_text(%Ecto.Association.NotLoaded{}), do: "- not loaded -"
   def forage_as_text(resource), do: Display.as_text(resource)
+
+  def forage_as_html_list(resources) do
+    resources
+    |> Enum.map(&forage_as_html/1)
+    |> Enum.intersperse(", ")
+  end
 
   @doc """
   A filter that works on text.
