@@ -12,9 +12,14 @@ defmodule Forage.MixProject do
       description: description(),
       package: package(),
       deps: deps(),
-      aliases: aliases()
+      aliases: aliases(),
+      elixirc_paths: elixirc_paths(Mix.env()),
+      preferred_cli_env: [test: :test]
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support_web", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help compile.app" to learn about applications.
   def application do
@@ -30,7 +35,11 @@ defmodule Forage.MixProject do
       {:phoenix_html, "~> 3.0"},
       {:json, ">= 0.0.0"},
       {:paginator, "~> 1.0"},
-      {:ex_doc, "~> 0.23", only: :dev}
+      # Dev and test dependencies
+      {:jason, ">= 0.0.0", only: :test},
+      {:phoenix, "~> 1.6", only: :test},
+      {:gettext, "~> 0.19", only: :test},
+      {:ex_doc, "~> 0.23", only: [:dev, :test]}
     ]
   end
 

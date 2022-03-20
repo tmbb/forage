@@ -139,9 +139,9 @@ defmodule ForageWeb.ForageView do
           error_helpers_module: AppWeb.ErrorHelpers,
           prefix: :backoffice_employee,
           prefixes: [
-            backoffice_department: AppWeb.Backoffice.Department,
-            backoffice_function: AppWeb.Backoffice.Function,
-            backoffice_benefit: AppWeb.Backoffice.Benefit
+            backoffice_department: MyApp.Backoffice.Department,
+            backoffice_function: MyApp.Backoffice.Function,
+            backoffice_benefit: MyApp.Backoffice.Benefit
           ]
       end
   """
