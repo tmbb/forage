@@ -2,6 +2,11 @@
 
 <!-- %% CHANGELOG_ENTRIES %% -->
 
+### 0.6.0 - 2022-03-20 22:45:00
+
+Major refactor with bettwe support for customization of more complex widgets.
+
+
 ### 0.5.0 - 2021-11-23 22:06:21
 
 Main changes were:
