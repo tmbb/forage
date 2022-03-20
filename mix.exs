@@ -39,6 +39,7 @@ defmodule Forage.MixProject do
       {:jason, ">= 0.0.0", only: :test},
       {:phoenix, "~> 1.6", only: :test},
       {:gettext, "~> 0.19", only: :test},
+      {:floki, ">= 0.0.0", only: :test},
       {:ex_doc, "~> 0.23", only: [:dev, :test]}
     ]
   end

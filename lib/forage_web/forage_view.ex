@@ -488,7 +488,6 @@ defmodule ForageWeb.ForageView do
     :input_type,
     :number_input,
     :password_input,
-    :radio_button,
     :range_input,
     :search_input,
     :telephone_input,
@@ -500,18 +499,50 @@ defmodule ForageWeb.ForageView do
   ]
 
   input_class_for = fn
-    input when input in [:radio_button, :checkbox] -> "form-check-input"
+    input when input in [:checkbox] -> "form-check-input"
     _other -> "form-control"
   end
 
   input_class_for_small = fn
-    input when input in [:radio_button, :checkbox] -> "form-check-input form-check-input-sm"
+    input when input in [:checkbox] -> "form-check-input form-check-input-sm"
     _other -> "form-control form-control-sm"
   end
 
   input_class_for_large = fn
-    input when input in [:radio_button, :checkbox] -> "form-check-input form-check-input-lg"
+    input when input in [:checkbox] -> "form-check-input form-check-input-lg"
     _other -> "form-control form-control-lg"
+  end
+
+  # Radio button is special because unlike all other widgets it takes
+  # a `value` argument.
+
+  @doc """
+  See docs for `Phoenix.HTML.Form.radio_button/3`.
+  """
+  def forage_radio_button(form, field, value, opts \\ []) do
+    {class, opts} = Keyword.pop(opts, :class, "")
+    classes = classes_for_input(form, field, [class, " form-check-input"])
+    Form.radio_button(form, field, value, [{:class, classes} | opts])
+  end
+
+  @doc """
+  See docs for `Phoenix.HTML.Form.radio_button/3`.
+  A smaller version of the input widget.
+  """
+  def forage_radio_button_small(form, field, value, opts \\ []) do
+    {class, opts} = Keyword.pop(opts, :class, "")
+    classes = classes_for_input(form, field, [class, " form-check-input form-check-input-sm"])
+    Form.radio_button(form, field, value, [{:class, classes} | opts])
+  end
+
+  @doc """
+  See docs for `Phoenix.HTML.Form.radio_button/3`.
+  A larger version of the input widget.
+  """
+  def forage_radio_button_large(form, field, value, opts \\ []) do
+    {class, opts} = Keyword.pop(opts, :class, "")
+    classes = classes_for_input(form, field, [class, " form-check-input form-check-input-lg"])
+    Form.radio_button(form, field, value, [{:class, classes} | opts])
   end
 
   for name <- phoenix_form_input_names do
