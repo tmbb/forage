@@ -93,6 +93,10 @@ defmodule Forage.Test.ForageWeb.ForageViewTest do
       # sort direction (i.e. the link works as a toggle)
       [href] = Floki.attribute(doc, "a", "href")
       assert href =~ ~S(/org/employee?_sort[name][direction]=desc)
+      a_text = Floki.find(doc, "a") |> Floki.text()
+      assert a_text =~ "Name"
+      refute a_text =~ "↓"
+      refute a_text =~ "↑"
     end
 
     test "sanity check on MyView.resource_sort_link/4 - :asc" do
@@ -115,6 +119,7 @@ defmodule Forage.Test.ForageWeb.ForageViewTest do
 
       [href] = Floki.attribute(doc, "a", "href")
       assert href =~ ~S(/org/employee?_sort[name][direction]=desc)
+      assert Floki.find(doc, "a") |> Floki.text() =~ "\u00A0↓"
     end
 
     test "sanity check on MyView.resource_sort_link/4 - :desc" do
@@ -139,6 +144,7 @@ defmodule Forage.Test.ForageWeb.ForageViewTest do
       # sort direction (i.e. the link works as a toggle)
       [href] = Floki.attribute(doc, "a", "href")
       assert href =~ ~S(/org/employee?_sort[name][direction]=asc)
+      assert Floki.find(doc, "a") |> Floki.text() =~ "\u00A0↑"
     end
   end
 end

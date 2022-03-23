@@ -839,16 +839,16 @@ defmodule ForageWeb.ForageView do
   A link to sort a list of database rows by a certain key.
   """
   def forage_sort_link(conn, mod, fun, field, content, options \\ []) do
-    icon_down = Keyword.get(options, :icon_down, " ↓")
-    icon_up = Keyword.get(options, :icon_up, " ↑")
+    icon_down = Keyword.get(options, :icon_down, {:safe, "&nbsp;↓"})
+    icon_up = Keyword.get(options, :icon_up, {:safe, "&nbsp;↑"})
 
     {link_content, new_conn_params} =
       case sort_direction(conn, field) do
         :asc ->
-          {[content, " ", icon_down], sort_by(conn, field, "desc")}
+          {[content, icon_down], sort_by(conn, field, "desc")}
 
         :desc ->
-          {[content, " ", icon_up], sort_by(conn, field, "asc")}
+          {[content, icon_up], sort_by(conn, field, "asc")}
 
         nil ->
           {content, sort_by(conn, field, "desc")}
