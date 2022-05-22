@@ -189,7 +189,12 @@ defmodule ForageWeb.ForageView do
           internationalized_forage_widgets(error_helpers_module)
       end
 
-    prefixed_widgets = prefixed_forage_widgets(routes_module, prefix)
+    prefixed_widgets =
+      if prefix do
+        prefixed_forage_widgets(routes_module, prefix)
+      else
+        nil
+      end
 
     resource_links = define_resource_links(routes_module, prefixes_args)
 
@@ -684,6 +689,12 @@ defmodule ForageWeb.ForageView do
     """
   end
 
+  def forage_simple_select(form, field, options, opts \\ []) do
+    class = Keyword.get(opts, :class, "form-control")
+    new_opts = Keyword.put(opts, :class, class)
+    Form.select(form, field, options, new_opts)
+  end
+
   defp get_field_id(field_value, id_field) do
     case field_value do
       nil -> nil
@@ -985,6 +996,15 @@ defmodule ForageWeb.ForageView do
       |> Keyword.put_new(:method, "get")
 
     form_for(conn, action, new_options, fun)
+  end
+
+  @doc """
+  TODO: ...
+  """
+  def forage_submit(name, opts \\ []) do
+    button_class = Keyword.get(opts, :button_class, "btn-primary")
+    new_opts = Keyword.put_new(opts, :class, ["btn btn-block ", button_class])
+    Form.submit(name, new_opts)
   end
 
   @doc false
