@@ -152,8 +152,8 @@ defmodule Forage.Test.ForageWeb.ForageView.ForageFormGroupTest do
       assert Floki.find(doc, "div > label") |> Floki.attribute("for") == ["boolean_field"]
       assert Floki.find(doc, "div > label") |> Floki.text() == "Boolean field label"
       assert [_input] = Floki.find(doc, "div > input.form-check-input")
-      # assert Floki.find(doc, "div > input") |> Floki.attribute("value") == ["true"]
-      # assert Floki.find(doc, "div > input") |> Floki.text() == ""
+      # Don't forgett that the checkbox widgets generate an extra hidden input!
+      assert Floki.find(doc, "div > input") |> Floki.attribute("value") == ["false", "true"]
     end
 
     test "MyView.forage_form_check/5 is equivalent to ForageView.forage_form_check/6" do

@@ -422,38 +422,6 @@ defmodule ForageWeb.ForageView do
     """
   end
 
-  # @doc false
-  # def forage_row(widgets) do
-  #   [
-  #     ~e[<div class="row">],
-  #     Enum.map(widgets, fn w -> [~e[<div class="col">], w, ~e[</div>]] end),
-  #     ~e[</div>]
-  #   ]
-  # end
-
-  # @doc """
-  # Creates a fragment that can be reused in the same template.
-
-  # It's meant to be used in an EEx template, which has some synctatic
-  # restrictions that make it hard to set a variable to a an EEx fragment.
-
-  # ## Example
-
-  #     <%= fragment widget do %>
-  #       <div class="my-widget">
-  #         Add an EEx fragment here.
-  #         Can contain <%= @dynamic %> fragments.
-  #       </div>
-  #     <% end %>
-
-  #     <%= widget %>
-  # """
-  # defmacro fragment(var, [do: body]) do
-  #   quote do
-  #     unquote(var) = unquote(body)
-  #   end
-  # end
-
   defp classes_for_input(form, field, user_specified_classes) do
     case form.errors do
       [] ->
@@ -999,7 +967,7 @@ defmodule ForageWeb.ForageView do
   end
 
   @doc """
-  TODO: ...
+  See docs for `Phoenix.HTML.Form.submit/3`.
   """
   def forage_submit(name, opts \\ []) do
     button_class = Keyword.get(opts, :button_class, "btn-primary")
@@ -1066,7 +1034,7 @@ defmodule ForageWeb.ForageView do
   The resource must implement support the `ForageWeb.Display` protocol.
 
   This function works when the result is `nil` (it returns the empty string)
-  and when the resource is an association that hasn«' been loaded.
+  and when the resource is an association that hasn't been loaded.
   """
   def forage_as_html(nil), do: ""
   def forage_as_html(%Ecto.Association.NotLoaded{}), do: "- not loaded -"

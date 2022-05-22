@@ -2,6 +2,14 @@
 
 <!-- %% CHANGELOG_ENTRIES %% -->
 
+### 0.7.0 - 2022-05-22 23:30:37
+
+Add a `forage_submit` widget in order to have a `submit` button that plays well
+with the CSS styles used by Forage.
+
+Improved the docs.
+
+
 ### 0.6.0 - 2022-03-20 22:45:00
 
 Major refactor with bettwe support for customization of more complex widgets.
