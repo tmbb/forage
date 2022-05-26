@@ -40,7 +40,8 @@ defmodule Forage.MixProject do
       {:phoenix, "~> 1.6", only: :test},
       {:gettext, "~> 0.19", only: :test},
       {:floki, ">= 0.0.0", only: :test},
-      {:ex_doc, "~> 0.23", only: [:dev, :test]}
+      {:ex_doc, "~> 0.23", only: [:dev, :test]},
+      {:makeup_eex, "> 0.0.0", only: [:dev, :test]}
     ]
   end
 

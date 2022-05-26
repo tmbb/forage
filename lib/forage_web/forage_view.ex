@@ -108,7 +108,7 @@ defmodule ForageWeb.ForageView do
   Some design decisions are a little bit questionable and deserve a longer explanation.
 
   It might seem weird that we are defining so many functions so similar
-  to the ones defined in `Forage.ForageView` itself.
+  to the ones defined in `Forage.ForageView` itself. The reason is the following:
   Forage uses [Bootstrap4](https://getbootstrap.com/docs/4.6/getting-started/introduction/)
   templates and Forage widgets are based on the default
   `Phoenix.HTML` widgets. To deal with errors, Phoenix requires an `ErrorHelpers` module
@@ -116,8 +116,11 @@ defmodule ForageWeb.ForageView do
   to inject the (translated) errors into the
   [form group](https://getbootstrap.com/docs/4.6/components/forms/#form-groups).
   This means that the `ForageWeb.ForageView.forage_form_group/6` widget (and similar ones)
-  need to be aware of the `ErrorHelpers`. This means that the user has to pass the `ErrorHelpers`
-  module as an argument to all form groups, which would clutter the code for little benefit.
+  need to be aware of the `ErrorHelpers`.
+
+  For that to work, the user has to pass the `ErrorHelpers` module as an argument
+  to all form groups, which would clutter the code for little benefit.
+
   By defining a `c:ForageWeb.ForageView.forage_form_group/5` function which already
   incorporates the `ErrorHelpers` module, we can make for (slightly) cleaner code.
   By default, you should never have to use the
