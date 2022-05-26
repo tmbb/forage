@@ -124,14 +124,14 @@ defmodule ForageWeb.Assets do
   ## Examples
 
   ```heex
-  <%= ForageWeb.Assets.bootswatch4_theme_from_cdn("superhero") %>
+  <%= ForageWeb.Assets.theme_from_cdn("superhero") %>
   ```
   """
-  def bootswatch4_theme_from_cdn("default") do
+  def theme_from_cdn("default") do
     {:safe, ~S[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">]}
   end
 
-  def bootswatch4_theme_from_cdn(theme) when theme in @bootswatch_themes do
+  def theme_from_cdn(theme) when theme in @bootswatch_themes do
     {:safe, [
       ~S[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@4.5.2/dist/],
       theme,
