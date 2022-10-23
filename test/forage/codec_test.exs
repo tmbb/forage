@@ -7,13 +7,15 @@ defmodule Forage.CodecTest do
   alias Forage.Codec.Encoder
   alias Forage.Codec.Decoder
   alias Forage.ForagePlan
+  alias Forage.ForagePlan.Filter
+
   # Exceptions
   # alias Forage.Codec.Exceptions.InvalidAssocError
   # alias Forage.Codec.Exceptions.InvalidFieldError
   alias Forage.Codec.Exceptions.InvalidSortDirectionError
   # Testing hepers
-  alias TestSchemas.PrimarySchema
-  alias TestSchemas.RemoteSchema
+  alias Forage.Test.Support.PrimarySchema
+
   doctest Forage.Codec.Encoder
 
   # This module is naturally divided into 5 sections:
@@ -25,14 +27,16 @@ defmodule Forage.CodecTest do
 
   describe "filter" do
     test "single filter" do
-      encoded = %{"_filter" => %{"string_field" => %{"op" => "contains", "val" => "x"}}}
+      encoded = %{
+        "_filter" => %{"string_field" => %{"op" => "contains", "val" => "x"}},
+        "_sort" => %{}
+      }
 
-      decoded =
-        %ForagePlan{
-          filter: [
-            [field: {:simple, :string_field}, operator: "contains", value: "x"]
-          ]
-        }
+      decoded = %ForagePlan{
+        filter: [
+          %Filter{field: {:simple, :string_field}, operator: "contains", value: "x"}
+        ]
+      }
 
       assert Encoder.encode(decoded) == encoded
       assert Decoder.decode(encoded, PrimarySchema) == decoded
@@ -43,16 +47,16 @@ defmodule Forage.CodecTest do
         "_filter" => %{
           "string_field" => %{"op" => "contains", "val" => "x"},
           "integer_field" => %{"op" => "equal_to", "val" => "2"}
-        }
+        },
+        "_sort" => %{}
       }
 
-      decoded =
-        %ForagePlan{
-          filter: [
-            [field: {:simple, :integer_field}, operator: "equal_to", value: "2"],
-            [field: {:simple, :string_field}, operator: "contains", value: "x"]
-          ]
-        }
+      decoded = %ForagePlan{
+        filter: [
+          %Filter{field: {:simple, :integer_field}, operator: "equal_to", value: "2"},
+          %Filter{field: {:simple, :string_field}, operator: "contains", value: "x"}
+        ]
+      }
 
       assert Encoder.encode(decoded) == encoded
       assert Decoder.decode(encoded, PrimarySchema) == decoded
@@ -60,19 +64,19 @@ defmodule Forage.CodecTest do
 
     test "association" do
       encoded = %{
-        "_filter" => %{"owner.remote_string_field" => %{"op" => "contains", "val" => "x"}}
+        "_filter" => %{"owner.remote_string_field" => %{"op" => "contains", "val" => "x"}},
+        "_sort" => %{}
       }
 
-      decoded =
-        %ForagePlan{
-          filter: [
-            [
-              field: {:assoc, {RemoteSchema, :owner, :remote_string_field}},
-              operator: "contains",
-              value: "x"
-            ]
-          ]
-        }
+      decoded = %ForagePlan{
+        filter: [
+          %Forage.ForagePlan.Filter{
+            field: {:assoc, {Forage.Test.Support.RemoteSchema, :owner, :remote_string_field}},
+            operator: "contains",
+            value: "x"
+          }
+        ]
+      }
 
       assert Decoder.decode(encoded, PrimarySchema) == decoded
       assert Encoder.encode(decoded) == encoded
@@ -83,24 +87,16 @@ defmodule Forage.CodecTest do
         "_filter" => %{
           "string_field" => %{"op" => "contains", "val" => "x"},
           "owner.remote_string_field" => %{"op" => "contains", "val" => "x"}
-        }
+        },
+        "_sort" => %{}
       }
 
-      decoded =
-        %ForagePlan{
-          filter: [
-            [
-              field: {:assoc, {RemoteSchema, :owner, :remote_string_field}},
-              operator: "contains",
-              value: "x"
-            ],
-            [
-              field: {:simple, :string_field},
-              operator: "contains",
-              value: "x"
-            ]
-          ]
-        }
+      decoded = %ForagePlan{
+        filter: [
+          %Forage.ForagePlan.Filter{field: {:assoc, {Forage.Test.Support.RemoteSchema, :owner, :remote_string_field}}, operator: "contains", value: "x"},
+          %Forage.ForagePlan.Filter{field: {:simple, :string_field}, operator: "contains", value: "x"}
+        ]
+      }
 
       # TODO: test the query somehow agains a real DB
       {_plan, _query} = Forage.QueryBuilder.build_plan_and_query(encoded, PrimarySchema)
@@ -119,21 +115,35 @@ defmodule Forage.CodecTest do
         }
       }
 
-      decoded =
-        %ForagePlan{
-          filter: [
-            [field: {:simple, :integer_field}, operator: "equal_to", value: "2"],
-            [field: {:simple, :string_field}, operator: "contains", value: "x"]
-          ]
-        }
+      decoded = %ForagePlan{
+        filter: [
+          %Forage.ForagePlan.Filter{
+            field: {:simple, :integer_field},
+            operator: "equal_to",
+            value: "2"
+          },
+          %Forage.ForagePlan.Filter{
+            field: {:simple, :string_field},
+            operator: "contains",
+            value: "x"
+          }
+        ]
+      }
 
-      decoded_wrong_order =
-        %ForagePlan{
-          filter: [
-            [field: {:simple, :string_field}, operator: "contains", value: "x"],
-            [field: {:simple, :integer_field}, operator: "equal_to", value: "2"]
-          ]
-        }
+      decoded_wrong_order = %ForagePlan{
+        filter: [
+          %Forage.ForagePlan.Filter{
+            field: {:simple, :string_field},
+            operator: "contains",
+            value: "x"
+          },
+          %Forage.ForagePlan.Filter{
+            field: {:simple, :integer_field},
+            operator: "equal_to",
+            value: "2"
+          }
+        ]
+      }
 
       for _ <- 1..100 do
         assert Decoder.decode(encoded, PrimarySchema) == decoded
@@ -146,11 +156,11 @@ defmodule Forage.CodecTest do
   describe "sort" do
     test "single sort field" do
       # Ascending order
-      encoded_asc = %{"_sort" => %{"string_field" => %{"direction" => "asc"}}}
-      decoded_asc = %ForagePlan{sort: [[field: :string_field, direction: :asc]]}
+      encoded_asc = %{"_sort" => %{"string_field" => %{"direction" => "asc"}}, "_filter" => %{}}
+      decoded_asc = %ForagePlan{sort: [%Forage.ForagePlan.Sort{direction: :asc, field: :string_field}]}
       # Descending order
-      encoded_desc = %{"_sort" => %{"string_field" => %{"direction" => "desc"}}}
-      decoded_desc = %ForagePlan{sort: [[field: :string_field, direction: :desc]]}
+      encoded_desc = %{"_sort" => %{"string_field" => %{"direction" => "desc"}}, "_filter" => %{}}
+      decoded_desc = %ForagePlan{sort: [%Forage.ForagePlan.Sort{direction: :desc, field: :string_field}]}
       # There are no other valid orders!
 
       assert Decoder.decode(encoded_asc, PrimarySchema) == decoded_asc

@@ -1,7 +1,7 @@
-defmodule TestSchemas.RemoteSchema do
+defmodule Forage.Test.Support.RemoteSchema do
   use Ecto.Schema
   import Ecto.Changeset
-  alias TestSchemas.PrimarySchema
+  alias Forage.Test.Support.PrimarySchema
 
   schema "dummy_schema" do
     field(:remote_string_field, :string)

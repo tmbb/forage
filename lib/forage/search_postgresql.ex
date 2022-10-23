@@ -14,15 +14,16 @@ defmodule Forage.SearchPostgreSQL do
   def define_forage_unaccent() do
     sql_unaccent_up = "CREATE EXTENSION IF NOT EXISTS unaccent;"
     sql_pg_trgm_up = "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
-    sql_define_function_up = """
-      CREATE OR REPLACE FUNCTION public.forage_unaccent(text)
-        RETURNS text AS
-      $func$
-      SELECT public.unaccent('public.unaccent', $1)
-      $func$
 
-      LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
-      """
+    sql_define_function_up = """
+    CREATE OR REPLACE FUNCTION public.forage_unaccent(text)
+      RETURNS text AS
+    $func$
+    SELECT public.unaccent('public.unaccent', $1)
+    $func$
+
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT;
+    """
 
     # These "down" commands revert the effect of the "up" commands.
     # However, we don't actually want to revert the effect of the commands above
@@ -133,6 +134,7 @@ defmodule Forage.SearchPostgreSQL do
   """
   def naive_search_params(%{"_search" => term} = params, field) do
     field_string = to_string(field)
+
     map_with_new_filter = %{
       field_string => %{
         "op" => "contains",
@@ -158,6 +160,7 @@ defmodule Forage.SearchPostgreSQL do
   """
   def unaccented_search_params(%{"_search" => term} = params, field) do
     field_string = to_string(field)
+
     map_with_new_filter = %{
       field_string => %{
         "op" => "postgresql:contains_ignore_accents",
@@ -172,9 +175,9 @@ defmodule Forage.SearchPostgreSQL do
     params
     |> Map.delete("_search")
     |> Map.update(
-        "_filter",
-        map_with_new_filter,
-        fn filters -> Map.merge(filters, map_with_new_filter) end
-      )
+      "_filter",
+      map_with_new_filter,
+      fn filters -> Map.merge(filters, map_with_new_filter) end
+    )
   end
 end

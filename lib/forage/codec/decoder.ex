@@ -9,6 +9,12 @@ defmodule Forage.Codec.Decoder do
   alias Forage.Codec.Exceptions.InvalidPaginationDataError
   alias Forage.ForagePlan
 
+  alias Forage.ForagePlan.{
+    Filter,
+    Sort,
+    Pagination
+  }
+
   @type schema() :: atom()
   @type assoc() :: {schema(), atom(), atom()}
 
@@ -33,7 +39,7 @@ defmodule Forage.Codec.Decoder do
     decoded_fields =
       for {field_string, %{"op" => op, "val" => val}} <- filter_data do
         field_or_assoc = decode_field_or_assoc(field_string, schema)
-        [field: field_or_assoc, operator: op, value: val]
+        %Filter{field: field_or_assoc, operator: op, value: val}
       end
 
     Enum.sort(decoded_fields)
@@ -68,7 +74,7 @@ defmodule Forage.Codec.Decoder do
       for {field_name, %{"direction" => direction}} <- sort do
         field_atom = safe_field_name_to_atom!(field_name, schema)
         direction = decode_direction(direction)
-        [field: field_atom, direction: direction]
+        %Sort{field: field_atom, direction: direction}
       end
 
     # Sort the result so that the order is always the same
@@ -87,7 +93,7 @@ defmodule Forage.Codec.Decoder do
       for {field_name, %{"direction" => direction}} <- sort do
         field_atom = safe_field_name_to_atom!(field_name)
         direction = decode_direction(direction)
-        [field: field_atom, direction: direction]
+        %Sort{field: field_atom, direction: direction}
       end
 
     # Sort the result so that the order is always the same
@@ -100,22 +106,13 @@ defmodule Forage.Codec.Decoder do
   Extract and decode the pagination data from the `params` map into a keyword list.
   """
   def decode_pagination(%{"_pagination" => pagination}, _schema) do
-    decoded_after =
-      case pagination["after"] do
-        nil -> []
-        after_ -> [after: after_]
-      end
+    decoded_after = pagination["after"]
+    decoded_before = pagination["before"]
 
-    decoded_before =
-      case pagination["before"] do
-        nil -> []
-        before -> [before: before]
-      end
-
-    decoded_after ++ decoded_before
+    %Pagination{after: decoded_after, before: decoded_before}
   end
 
-  def decode_pagination(_params, _schema), do: []
+  def decode_pagination(_params, _schema), do: %Pagination{}
 
   @spec decode_direction(String.t() | nil) :: atom() | nil
   defp decode_direction("asc"), do: :asc
@@ -183,6 +180,7 @@ defmodule Forage.Codec.Decoder do
 
     try do
       field_name_as_atom = String.to_existing_atom(field_name)
+
       case field_name_as_atom in schema_fields do
         true ->
           field_name_as_atom

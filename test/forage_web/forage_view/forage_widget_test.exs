@@ -88,7 +88,6 @@ defmodule Forage.ForageView.InputWidgetTests do
   end
 
   describe "widgets based on the HTML <input> element:" do
-
     test "sanity check on color_input widgets (small, normal and large)" do
       form = test_form()
 
@@ -396,6 +395,5 @@ defmodule Forage.ForageView.InputWidgetTests do
       assert [_input] = Floki.find(doc_large, "input.form-control.form-control-lg")
       assert Floki.find(doc_large, "input") |> Floki.attribute("type") == ["tel"]
     end
-
   end
 end

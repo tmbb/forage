@@ -6,11 +6,7 @@ defmodule Forage.Test.ForageWeb.ForageView.ForageFormGroupTest do
   # Get a view build using `use ForageWeb.ForageView` so we can test
   # the automatically defined callbacks
   alias Forage.Test.SupportWeb.Org.EmployeeView
-
   alias Forage.Test.SupportWeb.ErrorHelpers
-
-  @string_field_value "A string"
-  @boolean_field_value true
 
   defp test_conn(params) do
     Plug.Test.conn(:get, "/", params)
@@ -18,8 +14,8 @@ defmodule Forage.Test.ForageWeb.ForageView.ForageFormGroupTest do
 
   defp test_form() do
     test_conn(%{
-      string_field: @string_field_value,
-      boolean_field: @boolean_field_value
+      string_field: "A string",
+      boolean_field: true
     })
     |> Phoenix.HTML.FormData.to_form([])
   end
@@ -152,7 +148,7 @@ defmodule Forage.Test.ForageWeb.ForageView.ForageFormGroupTest do
       assert Floki.find(doc, "div > label") |> Floki.attribute("for") == ["boolean_field"]
       assert Floki.find(doc, "div > label") |> Floki.text() == "Boolean field label"
       assert [_input] = Floki.find(doc, "div > input.form-check-input")
-      # Don't forgett that the checkbox widgets generate an extra hidden input!
+      # Don't forget that the checkbox widgets generate an extra hidden input!
       assert Floki.find(doc, "div > input") |> Floki.attribute("value") == ["false", "true"]
     end
 

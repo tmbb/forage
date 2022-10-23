@@ -3,34 +3,27 @@ defmodule Forage.QueryBuilder do
   alias Forage.Codec.Decoder
   alias Forage.QueryBuilder.Filter
   alias Forage.QueryBuilder.SortField
+  alias Forage.ForagePlan.Sort
 
   defp sorts_by_id?(forage_plan) do
-    Enum.find(forage_plan.sort, fn f -> f[:field] == :id end)
+    Enum.find(forage_plan.sort, fn f -> f.field == :id end)
   end
 
   defp maybe_add_sort_fields(forage_plan, sort_fields, direction) do
     case forage_plan.sort do
       [] ->
-        sort_data = Enum.map(sort_fields, fn field -> [field: field, direction: direction] end)
+        sort_data = Enum.map(sort_fields, fn field -> %Sort{field: field, direction: direction} end)
         %{forage_plan | sort: sort_data}
 
-      [[field: _, direction: field_direction] | _rest] ->
+      [%Sort{direction: field_direction} | _rest] ->
         if sorts_by_id?(forage_plan) do
           forage_plan
         else
-          sort = forage_plan.sort
-          %{forage_plan | sort: sort ++ [[field: :id, direction: field_direction]]}
+          sort_data = forage_plan.sort
+          extra_sort_data = %Sort{field: :id, direction: field_direction}
+          %{forage_plan | sort: sort_data ++ [extra_sort_data]}
         end
     end
-  end
-
-  def join_assocs(query, _assocs) do
-    # Enum.reduce(assocs, query, fn {:assoc, {_, local, _}}, query_so_far ->
-    #   from([p, ...] in query_so_far,
-    #     join: x in assoc(p, ^local)
-    #   )
-    # end)
-    query
   end
 
   @doc """
@@ -50,10 +43,9 @@ defmodule Forage.QueryBuilder do
     forage_plan = maybe_add_sort_fields(raw_forage_plan, default_sort, default_sort_direction)
 
     # Build parts of the query (the filters and the sorting columns)
-    {joins, where_clause} = Filter.joins_and_where_clause(forage_plan.filter)
+    query_with_joins = Filter.build_query_with_joins(schema, forage_plan.filter)
+    where_clause = Filter.build_where_clause(forage_plan.filter)
     order_by_clause = SortField.build_order_by_clause(forage_plan.sort)
-    # Build the query (except for the pagination)
-    query_with_joins = join_assocs(schema, joins)
 
     final_query =
       from([...] in query_with_joins,
@@ -77,7 +69,7 @@ defmodule Forage.QueryBuilder do
   def extract_non_empty_assocs(filters) do
     assocs =
       Enum.filter(filters, fn filter ->
-        match?({:assoc, _assoc}, filter[:field])
+        match?({:assoc, _assoc}, filter.field)
       end)
 
     Enum.map(assocs, fn {:assoc, {_schema, local, remote}} ->

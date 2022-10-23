@@ -6,16 +6,16 @@ defmodule ForageWeb.ForageController do
 
   @doc """
   Renders paginated data into a shape that the select widget expects.
-
+  
   This function returns a map.
   The user must use the JSON encoder in the Phoenix application to generate a JSON response.
-
+  
   It would be more succint to return JSON directly from this function,
   but Forage has no way of invoking the application's JSON encoder,
   so we leave that responsibility to the user.
-
+  
   ## Examples:
-
+  
   TODO
   """
   def forage_select_data(paginated) do
@@ -37,16 +37,16 @@ defmodule ForageWeb.ForageController do
   Renders paginated data into a shape that the select widget expects.
   Takes in either a field name (`text_field`) or a `converter` function
   to convert the entries into text.
-
+  
   This function returns a map.
   The user must use the JSON encoder in the Phoenix application to generate a JSON response.
-
+  
   It would be more succint to return JSON directly from this function,
   but Forage has no way of invoking the application's JSON encoder,
   so we leave that responsibility to the user.
-
+  
   ## Examples:
-
+  
   TODO
   """
   def forage_select_data(paginated, converter) when is_function(converter) do
@@ -82,16 +82,16 @@ defmodule ForageWeb.ForageController do
   @doc """
   Renders paginated data into a shape that the select widget expects.
   Removes pagination data.
-
+  
   This function returns a map.
   The user must use the JSON encoder in the Phoenix application to generate a JSON response.
-
+  
   It would be more succint to return JSON directly from this function,
   but Forage has no way of invoking the application's JSON encoder,
   so we leave that responsibility to the user.
-
+  
   ## Examples:
-
+  
   TODO
   """
   def forage_select_data_without_pagination(entries) do

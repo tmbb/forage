@@ -1,11 +1,12 @@
 defmodule Forage.Paginator do
   alias Forage.QueryBuilder
   alias Forage.ForagePlan
+  alias Forage.ForagePlan.Pagination
   alias Ecto.Query
 
   defp get_sort_direction!(forage_plan) do
-    all_asc? = Enum.all?(forage_plan.sort, fn field_data -> field_data[:direction] == :asc end)
-    all_desc? = Enum.all?(forage_plan.sort, fn field_data -> field_data[:direction] == :desc end)
+    all_asc? = Enum.all?(forage_plan.sort, fn field_data -> field_data.direction == :asc end)
+    all_desc? = Enum.all?(forage_plan.sort, fn field_data -> field_data.direction == :desc end)
     # TODO: better exceptions
     case {all_asc?, all_desc?} do
       {true, false} -> :asc
@@ -16,7 +17,7 @@ defmodule Forage.Paginator do
   end
 
   defp get_fields(forage_plan) do
-    Enum.map(forage_plan.sort, fn field_data -> field_data[:field] end)
+    Enum.map(forage_plan.sort, fn field_data -> field_data.field end)
   end
 
   @doc """
@@ -25,7 +26,8 @@ defmodule Forage.Paginator do
   Requires a repo with a `paginate/2` function.
   The easiest way of having a compliant repo is to `use Paginator, ...` inside your `Repo`.
   """
-  @spec paginate(ForagePlan.t() | map(), atom() | Query.t(), atom(), Keyword.t(), Keyword.t()) :: map()
+  @spec paginate(ForagePlan.t() | map(), atom() | Query.t(), atom(), Keyword.t(), Keyword.t()) ::
+          map()
   def paginate(forage_plan_or_params, schema_or_query, repo, options, repo_opts \\ [])
 
   def paginate(%ForagePlan{} = forage_plan, %Query{} = query, repo, options, repo_opts) do
@@ -43,8 +45,10 @@ defmodule Forage.Paginator do
     # If that happens, raise an exception with extreme prejudice.
     sort_direction = get_sort_direction!(forage_plan)
     # Gather all pagination option in one place
+    pagination_kw = Pagination.to_keyword_list(forage_plan.pagination)
+
     pagination_options =
-      forage_plan.pagination ++
+      pagination_kw ++
         pagination_limit ++
         [
           cursor_fields: cursor_fields,
@@ -71,9 +75,11 @@ defmodule Forage.Paginator do
     # It's possible that the ecto query sorts the sort fields in different directions.
     # If that happens, raise an exception with extreme prejudice.
     sort_direction = get_sort_direction!(forage_plan)
-    # Gather all pagination option in one place
+    # Gather all pagination options in one place
+    pagination_kw = Pagination.to_keyword_list(forage_plan.pagination)
+
     pagination_options =
-      forage_plan.pagination ++
+      pagination_kw ++
         pagination_limit ++
         [
           cursor_fields: cursor_fields,
@@ -106,9 +112,11 @@ defmodule Forage.Paginator do
     # It's possible that the ecto query sorts the sort fields in different directions.
     # If that happens, raise an exception with extreme prejudice.
     sort_direction = get_sort_direction!(forage_plan)
-    # Gather all pagination option in one place
+    # Gather all pagination options in one place
+    pagination_kw = Pagination.to_keyword_list(forage_plan.pagination)
+
     pagination_options =
-      forage_plan.pagination ++
+      pagination_kw ++
         pagination_limit ++
         [
           cursor_fields: cursor_fields,

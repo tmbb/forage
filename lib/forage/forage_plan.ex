@@ -15,9 +15,10 @@ defmodule Forage.ForagePlan do
       [offset-based pagination](https://github.com/duffelhq/paginator#cursor-based-aka-keyset-pagination)
       for medium/large datasets.
   """
+
   defstruct filter: [],
             sort: [],
-            pagination: []
+            pagination: %Forage.ForagePlan.Pagination{}
 
   @type t :: %__MODULE__{}
 end

@@ -41,7 +41,8 @@ defmodule Forage.MixProject do
       {:gettext, "~> 0.19", only: :test},
       {:floki, ">= 0.0.0", only: :test},
       {:ex_doc, "~> 0.23", only: [:dev, :test]},
-      {:makeup_eex, "> 0.0.0", only: [:dev, :test]}
+      {:makeup_eex, "> 0.0.0", only: [:dev, :test]},
+      {:ecto_sqlite3, ">= 0.0.0"}
     ]
   end
 

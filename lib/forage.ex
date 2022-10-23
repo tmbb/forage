@@ -18,7 +18,9 @@ defmodule Forage do
     for {key, value} <- attrs, into: %{} do
       case key do
         "__forage_select_many__" <> name ->
-          {remote_schema, _name_as_atom} = Decoder.remote_schema_and_field_name_as_atom(name, schema)
+          {remote_schema, _name_as_atom} =
+            Decoder.remote_schema_and_field_name_as_atom(name, schema)
+
           # In this case, value is a list of `id`s
           items = remote_schema |> where([p], p.id in ^value) |> repo.all()
           {name, items}
@@ -39,12 +41,12 @@ defmodule Forage do
 
   @doc """
   Preload the associations in a database result.
-
+  
   It accepts the following types of result:
-
+  
     - `{:ok, struct}` where `struct` is an ecto schema
     - `{:error, changeset}` where `changeset` is a changeset
-
+  
   This function is optimized to process the results of operations such as
   `c:Repo.insert/1` and `c:Repo.update/1`.
   """

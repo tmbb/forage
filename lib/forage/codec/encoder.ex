@@ -5,6 +5,12 @@ defmodule Forage.Codec.Encoder do
   """
   alias Forage.ForagePlan
 
+  alias Forage.ForagePlan.{
+    Sort,
+    Pagination,
+    Filter
+  }
+
   @doc """
   Encodes a forage plan into a params map.
 
@@ -25,13 +31,15 @@ defmodule Forage.Codec.Encoder do
   @doc """
   Encode the "filter" part of a forage plan. Returns a map.
   """
-  def encode_filter(%ForagePlan{filter: []} = _plan), do: %{}
+  def encode_filter(%ForagePlan{filter: %Filter{field: nil, operator: nil, value: nil}} = _plan) do
+    %{}
+  end
 
   def encode_filter(%ForagePlan{filter: filter} = _plan) do
     filter_value =
       for filter_filter <- filter, into: %{} do
         field_name =
-          case filter_filter[:field] do
+          case filter_filter.field do
             {:simple, name} when is_atom(name) ->
               Atom.to_string(name)
 
@@ -44,8 +52,8 @@ defmodule Forage.Codec.Encoder do
         # Return key-value pair
         {field_name,
          %{
-           "op" => filter_filter[:operator],
-           "val" => filter_filter[:value]
+           "op" => filter_filter.operator,
+           "val" => filter_filter.value
          }}
       end
 
@@ -55,13 +63,15 @@ defmodule Forage.Codec.Encoder do
   @doc """
   Encode the "sort" part of a forage plan. Returns a map.
   """
-  def encode_sort(%ForagePlan{sort: []} = _plan), do: %{}
+  def encode_sort(%ForagePlan{sort: %Sort{field: nil, direction: nil}} = _plan) do
+    %{}
+  end
 
   def encode_sort(%ForagePlan{sort: sort} = _plan) do
     sort_value =
       for sort_column <- sort, into: %{} do
-        field_name = Atom.to_string(sort_column[:field])
-        direction_name = Atom.to_string(sort_column[:direction])
+        field_name = Atom.to_string(sort_column.field)
+        direction_name = Atom.to_string(sort_column.direction)
         # Return key-value pair
         {field_name, %{"direction" => direction_name}}
       end
@@ -72,17 +82,17 @@ defmodule Forage.Codec.Encoder do
   @doc """
   Encode the "pagination" part of a forage plan. Returns a map.
   """
-  def encode_pagination(%ForagePlan{pagination: pagination} = _plan) do
+  def encode_pagination(%ForagePlan{pagination: %Pagination{} = pagination} = _plan) do
     encoded_after =
-      case Keyword.fetch(pagination, :after) do
-        :error -> %{}
-        {:ok, value} -> %{"after" => value}
+      case pagination.after do
+        nil-> %{}
+        value -> %{"after" => value}
       end
 
     encoded_before =
-      case Keyword.fetch(pagination, :before) do
-        :error -> %{}
-        {:ok, value} -> %{"before" => value}
+      case pagination.before do
+        nil -> %{}
+        value -> %{"before" => value}
       end
 
     Map.merge(encoded_after, encoded_before)

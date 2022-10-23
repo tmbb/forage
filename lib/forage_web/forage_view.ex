@@ -661,8 +661,9 @@ defmodule ForageWeb.ForageView do
   end
 
   def forage_simple_select(form, field, options, opts \\ []) do
-    class = Keyword.get(opts, :class, "form-control")
-    new_opts = Keyword.put(opts, :class, class)
+    old_class = Keyword.get(opts, :class, "")
+    new_class = "form-control #{old_class}"
+    new_opts = Keyword.put(opts, :class, new_class)
     Form.select(form, field, options, new_opts)
   end
 
@@ -768,34 +769,85 @@ defmodule ForageWeb.ForageView do
     field_text = display_relation(field_value)
 
     ~e"""
-    <div class="<%= class %>">
-      <select
-        name="_filter[<%= field %>_id][val]"
-        class="form-control"
-        data-forage-select2-widget="true"
-        data-url="<%= path %>">
-          <option value="<%= field_id %>"><%= field_text %></option>
-      </select>
-      <input type="hidden" name="_filter[<%= field %>_id][op]" value="equal_to"/>
+    <div class="row <%= class %>">
+      <div class="col-sm-12">
+        <select
+          name="_filter[<%= field %>_id][val]"
+          class="form-control"
+          data-forage-select2-widget="true"
+          data-url="<%= path %>">
+            <option value="<%= field_id %>"><%= field_text %></option>
+        </select>
+        <input type="hidden" name="_filter[<%= field %>_id][op]" value="equal_to"/>
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  Filter for an enum of strings.
+  """
+  def forage_simple_select_filter(form, field, options, opts \\ []) do
+    class = Keyword.get(opts, :class, "")
+    new_opts = Keyword.delete(opts, :class)
+
+    ~e"""
+    <div class="row <%= class %>">
+      <div class="col-sm-12">
+        <%= forage_simple_select(form, field, options, new_opts) %>
+        <input type="hidden" name="_filter[<%= field %>_id][op]" value="equal_to"/>
+      </div>
     </div>
     """
   end
 
   # Find a way of internationalizing this
-  @text_operators [
-    {"Contains", "contains"},
-    {"Equal to", "equal_to"},
-    {"Starts with", "starts_with"},
-    {"Ends with", "ends_with"}
-  ]
 
-  @number_operators [
-    {"Equal to", "equal_to"},
-    {"Greater than", "greater_than"},
-    {"Less than", "less_than"},
-    {"Greater than or equal to", "greater_than_or_equal_to"},
-    {"Less than or equal to", "less_than_or_equal_to"}
-  ]
+  @doc """
+  Names for the default text operators
+  (in the form of `{internationalized_name, canonical_name}`).
+
+  Supported operators are:
+
+    * `"Contains"` - `"contains"`
+    * `"Equal to"` - `"equal_to"`
+    * `"Starts with"` - `"starts_with"`
+    * `"Ends with"` - `"ends_with"`
+  """
+  def default_text_operators() do
+    messages_module = Forage.Config.messages_module()
+
+    [
+      {messages_module.message("Contains"), "contains"},
+      {messages_module.message("Equal to"), "equal_to"},
+      {messages_module.message("Starts with"), "starts_with"},
+      {messages_module.message("Ends with"), "ends_with"}
+    ]
+  end
+
+  @doc """
+  Names for the default number operators
+  (in the form of `{internationalized_name, canonical_name}`).
+
+  Supported operators are:
+
+    * `"Equal to"` - `"equal_to"`
+    * `"Greater than"` - `"greater_than"`
+    * `"Less than"` - `"less_than"`
+    * `"Greater than or equal to"` - `"greater_than_or_equal_to"`
+    * `"Less than or equal to"` - `"less_than_or_equal_to"`
+  """
+  def default_number_operators() do
+    messages_module = Forage.Config.messages_module()
+
+    [
+      {messages_module.message("Equal to"), "equal_to"},
+      {messages_module.message("Greater than"), "greater_than"},
+      {messages_module.message("Less than"), "less_than"},
+      {messages_module.message("Greater than or equal to"), "greater_than_or_equal_to"},
+      {messages_module.message("Less than or equal to"), "less_than_or_equal_to"}
+    ]
+  end
 
   @operator_class "col-sm-5"
   @value_class "col-sm-7"
@@ -816,6 +868,33 @@ defmodule ForageWeb.ForageView do
     |> Map.delete("_pagination")
     |> Map.put("_sort", %{field => %{"direction" => direction}})
   end
+
+
+  def forage_row(args) do
+    ~e"""
+    <div class="row">
+      <%= for arg <- args do %>
+        <div class="col">
+          <%= arg %>
+        </div>
+      <% end %>
+    </div>
+    """
+  end
+
+  # def forage_md_row(args) do
+  #   width =
+  #     case length(args) do
+  #       1 -> "-md-12"
+  #       2 -> "-md-6"
+  #       3 -> "-md-4"
+
+  #     end
+
+  #   ~e"""
+
+  #   """
+  # end
 
   @doc """
   A link to sort a list of database rows by a certain key.
@@ -1068,7 +1147,7 @@ defmodule ForageWeb.ForageView do
   TODO
   """
   def forage_text_filter(form, name, opts \\ []) do
-    generic_forage_filter("text", form, name, @text_operators, opts)
+    generic_forage_filter("text", form, name, default_text_operators(), opts)
   end
 
   @doc """
@@ -1087,7 +1166,7 @@ defmodule ForageWeb.ForageView do
   TODO
   """
   def forage_numeric_filter(form, name, opts \\ []) do
-    generic_forage_filter("number", form, name, @number_operators, opts)
+    generic_forage_filter("number", form, name, default_number_operators(), opts)
   end
 
   @doc """
@@ -1106,7 +1185,7 @@ defmodule ForageWeb.ForageView do
   TODO
   """
   def forage_date_filter(form, name, opts \\ []) do
-    generic_forage_filter("date", form, name, @number_operators, opts)
+    generic_forage_filter("date", form, name, default_number_operators(), opts)
   end
 
   @doc """
@@ -1125,7 +1204,7 @@ defmodule ForageWeb.ForageView do
   TODO
   """
   def forage_time_filter(form, name, opts \\ []) do
-    generic_forage_filter("time", form, name, @number_operators, opts)
+    generic_forage_filter("time", form, name, default_number_operators(), opts)
   end
 
   @doc """
@@ -1144,6 +1223,22 @@ defmodule ForageWeb.ForageView do
   TODO
   """
   def forage_datetime_filter(form, name, opts \\ []) do
-    generic_forage_filter("datetime", form, name, @number_operators, opts)
+    generic_forage_filter("datetime", form, name, default_number_operators(), opts)
   end
+
+  @doc """
+  Print booleans (`true` and `false`) as font-awesome icones.
+
+  The CSS for FontAwesome 5 must be included in the webpage.
+  """
+  def forage_pretty_boolean(true), do: ~e[<i title="true" class="fas fa-check"></i>]
+  def forage_pretty_boolean(false), do: ~e[<i title="false" class="fas fa-times"></i>]
+
+  @doc """
+  Print booleans (`true` and `false`) as yes/no.
+  Also prints `nil` as no.
+  """
+  def forage_yes_no(true), do: "yes"
+  def forage_yes_no(false), do: "no"
+  def forage_yes_no(nil), do: "no"
 end
